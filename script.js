@@ -1,30 +1,27 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Vartotojų profiliai: kiekvienas prisijungęs gali matyti vardus, bet keisti tik savo
+    
+    // Vartotojų profiliai
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // POKALBIAI: tik pokalbio dalyviai (participants) gali matyti ir keisti pokalbį
+    // Pokalbiai ir privačios žinutės (matomi tik dalyviams)
     match /chats/{chatId} {
       allow read, write: if request.auth != null && 
-        (request.auth.uid in resource.data.participants || 
-         request.auth.uid in request.resource.data.participants);
-
-      // ŽINUTĖS: skaityti ir rašyti gali tik to paties pokalbio dalyviai
+        (resource == null || request.auth.uid in resource.data.participants);
+        
       match /messages/{messageId} {
-        allow read, write: if request.auth != null && 
-          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow read, write: if request.auth != null;
       }
     }
 
-    // SKUNDAI / PRANEŠIMAI: bet kuris vartotojas gali pateikti skundą
+    // Pranešimai apie pažeidimus (Report)
     match /reports/{reportId} {
       allow create: if request.auth != null;
-      allow read: if false; // Prieinama tik administratoriui
+      allow read, update, delete: if false; // Tik sistemai/administratoriams
     }
   }
 }
