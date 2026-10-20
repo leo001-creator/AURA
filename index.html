@@ -2,9 +2,9 @@
 <html lang="lt">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ONYX – Privatus bendravimas</title>
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA – Nemokama Muzikos Platforma</title>
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -13,649 +13,383 @@
       theme: {
         extend: {
           colors: {
-            onyx: {
-              900: '#090a0f',
-              800: '#12141c',
-              700: '#1b1e2b',
-              600: '#262a3c',
-              accent: '#8b5cf6',
-              cyan: '#06b6d4'
+            aura: {
+              950: '#070709',
+              900: '#0e0f15',
+              800: '#161822',
+              700: '#222536',
+              green: '#1db954',
+              accent: '#8b5cf6'
             }
           }
         }
       }
     }
   </script>
-  
+
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Firebase SDKs (Compat versija tiesioginiam paleidimui naršyklėje be npm) -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
   <style>
-    /* Paslepia slinkties juostą švaresniam vaizdui */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    input[type="range"] { accent-color: #1db954; }
   </style>
 </head>
-<body class="bg-onyx-900 text-gray-100 font-sans antialiased selection:bg-onyx-accent selection:text-white flex justify-center min-h-screen">
+<body class="bg-aura-950 text-gray-200 font-sans antialiased h-screen flex flex-col overflow-hidden select-none">
 
-  <!-- Pagrindinis konteineris (optimizuotas mobiliajam formatui ir ekranui per vidurį) -->
-  <div id="app" class="w-full max-w-md h-screen flex flex-col bg-onyx-900 border-x border-onyx-800 shadow-2xl relative overflow-hidden">
-    
-    <!-- 1. PRISIJUNGIMO LANGAS -->
-    <section id="auth-screen" class="flex-1 flex flex-col items-center justify-between p-8 text-center">
-      <div class="my-auto flex flex-col items-center">
-        <div class="w-20 h-20 bg-gradient-to-tr from-onyx-accent to-onyx-cyan rounded-3xl flex items-center justify-center shadow-lg shadow-onyx-accent/20 mb-6">
-          <i data-lucide="zap" class="w-10 h-10 text-white"></i>
-        </div>
-        <h1 class="text-4xl font-extrabold tracking-tight">ONYX</h1>
-        <p class="text-gray-400 mt-2 text-sm max-w-xs">Privatus, saugus ir momentinis bendravimas be jokių istorijų ar triukšmo.</p>
-      </div>
+  <!-- Pagrindinis langas -->
+  <div class="flex-1 flex overflow-hidden">
 
-      <div class="w-full space-y-3 mb-6">
-        <button id="google-login-btn" class="w-full py-3.5 px-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-2xl flex items-center justify-center gap-3 transition active:scale-98 shadow-md">
-          <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.5s.7 4.8 1.9 7.2l3.7-2.9z"/><path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 17c1.8 3.7 5.6 6.5 10.1 6.5z"/></svg>
-          Prisijungti su Google
-        </button>
-
-        <button id="demo-login-btn" class="w-full py-3 px-4 bg-onyx-800 hover:bg-onyx-700 text-gray-300 font-medium rounded-2xl flex items-center justify-center gap-2 border border-onyx-700 transition">
-          <i data-lucide="play" class="w-4 h-4 text-onyx-cyan"></i>
-          Išbandyti demonstraciniu režimu
-        </button>
-      </div>
-
-      <p class="text-xs text-gray-500">Privatus šifravimas ir visiškas duomenų privatumas</p>
-    </section>
-
-    <!-- 2. VIRŠUTINĖ JUOSTA (Matoma prisijungus) -->
-    <header id="main-header" class="hidden h-16 px-5 border-b border-onyx-800 flex items-center justify-between bg-onyx-900/80 backdrop-blur-md z-10">
-      <div class="flex items-center gap-3">
-        <div id="user-avatar-btn" class="cursor-pointer relative">
-          <img id="nav-user-avatar" src="" alt="Avatar" class="w-9 h-9 rounded-full ring-2 ring-onyx-accent/50 object-cover">
-          <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-onyx-900 rounded-full"></span>
-        </div>
-        <h2 id="header-title" class="font-bold text-lg tracking-wide">Pokalbiai</h2>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <button id="header-action-btn" class="p-2 rounded-xl bg-onyx-800 hover:bg-onyx-700 text-gray-300 transition">
-          <i data-lucide="user-plus" class="w-5 h-5"></i>
-        </button>
-      </div>
-    </header>
-
-    <!-- 3. TURINIO SEKCIJOS -->
-
-    <!-- A. POKALBIŲ SĄRAŠAS -->
-    <main id="tab-chats" class="hidden flex-1 overflow-y-auto no-scrollbar p-4 space-y-2">
-      <div class="relative mb-3">
-        <input id="search-chats-input" type="text" placeholder="Ieškoti pokalbių..." class="w-full bg-onyx-800 border border-onyx-700 rounded-xl px-10 py-2.5 text-sm focus:outline-none focus:border-onyx-accent">
-        <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3.5 top-3"></i>
-      </div>
-
-      <div id="chats-list" class="space-y-1">
-        <!-- Generuojama dinamiškai -->
-      </div>
-    </main>
-
-    <!-- B. VIEŠAS PUSLAPIS (EXPLORE / AD ZONE) -->
-    <main id="tab-explore" class="hidden flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
-      <!-- Reklamos blokas -->
-      <div class="p-4 rounded-2xl bg-gradient-to-r from-onyx-800 to-onyx-700 border border-onyx-600/50 shadow-md relative overflow-hidden">
-        <span class="text-[10px] font-bold uppercase tracking-wider bg-onyx-accent/20 text-onyx-accent px-2 py-0.5 rounded-full mb-2 inline-block">Remiama</span>
-        <h4 class="font-bold text-sm">ONYX Pro Narystė</h4>
-        <p class="text-xs text-gray-400 mt-1">Gaukite neribotą aukštos kokybės vaizdo įrašų talpinimą ir išskirtinį ženklelį.</p>
-        <button class="mt-3 px-3 py-1.5 bg-onyx-accent text-white text-xs font-semibold rounded-lg shadow-sm hover:opacity-90">Sužinoti daugiau</button>
-      </div>
-
-      <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider px-1">Vieša erdvė</h3>
-      
-      <div id="public-feed" class="space-y-3">
-        <!-- Vieši įrašai / pranešimai -->
-      </div>
-    </main>
-
-    <!-- C. DRAUGŲ / PAIEŠKOS PUSLAPIS -->
-    <main id="tab-friends" class="hidden flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
-      <div>
-        <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Rasti vartotojų</label>
-        <div class="flex gap-2 mt-2">
-          <input id="friend-search-input" type="text" placeholder="Vardas arba el. paštas..." class="flex-1 bg-onyx-800 border border-onyx-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-onyx-accent">
-          <button id="friend-search-btn" class="px-4 bg-onyx-accent text-white rounded-xl text-sm font-semibold hover:opacity-90">Ieškoti</button>
-        </div>
-      </div>
-
-      <div id="search-results" class="space-y-2"></div>
-
-      <div>
-        <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Draugų sąrašas</h4>
-        <div id="friends-list" class="space-y-2">
-          <!-- Dinamiški draugai -->
-        </div>
-      </div>
-    </main>
-
-    <!-- D. PRIVATUMO IR PROFILIO PUSLAPIS -->
-    <main id="tab-profile" class="hidden flex-1 overflow-y-auto no-scrollbar p-5 space-y-6">
-      <div class="flex flex-col items-center">
-        <img id="profile-big-avatar" src="" class="w-24 h-24 rounded-full ring-4 ring-onyx-accent/30 object-cover shadow-xl">
-        <h3 id="profile-name" class="mt-3 font-bold text-lg"></h3>
-        <p id="profile-email" class="text-xs text-gray-400"></p>
-      </div>
-
-      <div class="bg-onyx-800 rounded-2xl p-4 border border-onyx-700 space-y-4">
-        <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Privatumas ir Saugumas</h4>
-        
-        <div class="flex items-center justify-between text-sm">
-          <span>Rodyti prisijungimo būseną</span>
-          <input type="checkbox" checked class="accent-onyx-accent w-4 h-4">
-        </div>
-        <div class="flex items-center justify-between text-sm">
-          <span>Leisti nuotraukų peržiūras</span>
-          <input type="checkbox" checked class="accent-onyx-accent w-4 h-4">
-        </div>
-      </div>
-
-      <div class="space-y-2">
-        <button id="logout-btn" class="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-sm font-semibold transition">
-          Atsijungti iš paskyros
-        </button>
-      </div>
-    </main>
-
-    <!-- 4. AKTYVAUS POKALBIO LANGAS (Overlay) -->
-    <section id="chat-window" class="hidden absolute inset-0 bg-onyx-900 z-50 flex flex-col">
-      <!-- Pokalbio antraštė -->
-      <div class="h-16 px-4 border-b border-onyx-800 flex items-center justify-between bg-onyx-900/90 backdrop-blur-md">
-        <div class="flex items-center gap-3">
-          <button id="back-to-chats" class="p-2 -ml-2 text-gray-400 hover:text-white">
-            <i data-lucide="arrow-left" class="w-6 h-6"></i>
-          </button>
-          <img id="chat-recipient-avatar" src="" class="w-9 h-9 rounded-full object-cover">
+    <!-- 1. KAIRYSIS ŠONINIS MENIU (SIDEBAR) -->
+    <aside class="w-64 bg-aura-900 border-r border-aura-800 flex flex-col justify-between p-4 hidden md:flex">
+      <div class="space-y-6">
+        <!-- Logotipas -->
+        <div class="flex items-center gap-3 px-2">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-aura-green to-aura-accent flex items-center justify-center text-white shadow-lg shadow-aura-green/20">
+            <i data-lucide="disc-3" class="w-6 h-6 animate-spin-slow"></i>
+          </div>
           <div>
-            <h3 id="chat-recipient-name" class="font-bold text-sm"></h3>
-            <span class="text-[11px] text-emerald-400 flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Prisijungęs
-            </span>
+            <h1 class="font-extrabold text-lg text-white tracking-wider">AURA</h1>
+            <span class="text-[10px] text-aura-green uppercase tracking-widest font-semibold">Free Stream</span>
           </div>
         </div>
 
-        <!-- Privatumo meniu mygtukas -->
-        <div class="relative">
-          <button id="chat-menu-btn" class="p-2 rounded-xl text-gray-400 hover:bg-onyx-800 hover:text-white">
-            <i data-lucide="more-vertical" class="w-5 h-5"></i>
+        <!-- Meniu navigacija -->
+        <nav class="space-y-1">
+          <button onclick="showSection('home')" class="w-full flex items-center gap-4 px-3 py-2.5 rounded-xl text-sm font-semibold text-white bg-aura-800/80 hover:bg-aura-800 transition">
+            <i data-lucide="home" class="w-5 h-5 text-aura-green"></i> Pagrindinis
           </button>
-          <!-- Iškrentantis meniu -->
-          <div id="chat-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-onyx-800 border border-onyx-700 rounded-xl shadow-xl py-1 z-50">
-            <button id="block-user-btn" class="w-full px-4 py-2 text-left text-xs text-red-400 hover:bg-onyx-700 flex items-center gap-2">
-              <i data-lucide="shield-alert" class="w-4 h-4"></i> Užblokuoti vartotoją
+          <button onclick="openImportModal()" class="w-full flex items-center gap-4 px-3 py-2.5 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-aura-800/50 transition">
+            <i data-lucide="folder-input" class="w-5 h-5 text-aura-accent"></i> Perkelti Playlist
+          </button>
+          <button onclick="showSection('search')" class="w-full flex items-center gap-4 px-3 py-2.5 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-aura-800/50 transition">
+            <i data-lucide="search" class="w-5 h-5"></i> Paieška
+          </button>
+        </nav>
+
+        <!-- Grojaraščiai -->
+        <div class="pt-4 border-t border-aura-800">
+          <div class="flex items-center justify-between px-2 mb-2">
+            <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Tavo Biblioteka</span>
+            <button onclick="openImportModal()" title="Pridėti grojaraštį" class="text-gray-400 hover:text-white">
+              <i data-lucide="plus" class="w-4 h-4"></i>
             </button>
-            <button id="report-user-btn" class="w-full px-4 py-2 text-left text-xs text-yellow-400 hover:bg-onyx-700 flex items-center gap-2">
-              <i data-lucide="flag" class="w-4 h-4"></i> Pranešti apie pažeidimą
-            </button>
+          </div>
+          <div id="sidebar-playlists" class="space-y-1 max-h-48 overflow-y-auto no-scrollbar text-sm">
+            <!-- Dinamiški grojaraščiai -->
           </div>
         </div>
       </div>
 
-      <!-- Žinučių langas -->
-      <div id="messages-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3">
-        <!-- Žinutės bus čia -->
+      <!-- Reklamos blokas (leidžiantis muzikai būti 100% nemokamai) -->
+      <div class="p-3.5 bg-aura-800/60 border border-aura-700/40 rounded-2xl relative overflow-hidden">
+        <span class="text-[9px] font-bold uppercase tracking-wider bg-aura-green/20 text-aura-green px-2 py-0.5 rounded-full inline-block mb-1.5">Rėmėjas</span>
+        <h4 class="text-xs font-bold text-white">AURA Free Music</h4>
+        <p class="text-[11px] text-gray-400 mt-1">Nemokamas transliavimas be prenumeratos mokesčių.</p>
       </div>
+    </aside>
 
-      <!-- Nuotraukos peržiūra prieš siunčiant -->
-      <div id="image-preview-bar" class="hidden px-4 py-2 bg-onyx-800 border-t border-onyx-700 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <img id="preview-img-tag" src="" class="w-10 h-10 object-cover rounded-lg border border-onyx-600">
-          <span class="text-xs text-gray-300">Nuotrauka paruošta</span>
+    <!-- 2. PAGRINDINIS TURINIO EKRANAS -->
+    <main class="flex-1 bg-gradient-to-b from-aura-900 to-aura-950 overflow-y-auto no-scrollbar p-6">
+      
+      <!-- Viršutinė paieškos juosta ir importo mygtukas -->
+      <header class="flex items-center justify-between gap-4 mb-8">
+        <div class="flex-1 max-w-md relative">
+          <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3.5 top-3"></i>
+          <input id="quick-search" type="text" placeholder="Ieškoti dainos, atlikėjo arba YouTube nuorodos..." class="w-full bg-aura-800/70 border border-aura-700 rounded-full pl-10 pr-4 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-aura-green transition">
         </div>
-        <button id="cancel-image-btn" class="text-xs text-red-400 hover:underline">Atšaukti</button>
-      </div>
 
-      <!-- Įvesties laukas -->
-      <div class="p-3 bg-onyx-900 border-t border-onyx-800 flex items-center gap-2">
-        <label class="p-2.5 bg-onyx-800 text-onyx-cyan rounded-xl cursor-pointer hover:bg-onyx-700 transition">
-          <i data-lucide="image" class="w-5 h-5"></i>
-          <input type="file" id="image-input" accept="image/*" class="hidden">
-        </label>
-        
-        <input id="message-input" type="text" placeholder="Rašyti žinutę..." class="flex-1 bg-onyx-800 border border-onyx-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-onyx-accent">
-        
-        <button id="send-message-btn" class="p-2.5 bg-onyx-accent text-white rounded-xl hover:opacity-90 transition">
-          <i data-lucide="send" class="w-5 h-5"></i>
+        <button onclick="openImportModal()" class="flex items-center gap-2 px-4 py-2 bg-aura-green hover:bg-aura-green/90 text-black font-bold rounded-full text-xs transition shadow-lg shadow-aura-green/20">
+          <i data-lucide="arrow-down-to-line" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Perkelti iš Spotify / Apple</span>
+        </button>
+      </header>
+
+      <!-- Sekcija: Dabartinis grojaraštis -->
+      <section>
+        <div class="flex items-end gap-6 mb-6">
+          <div id="playlist-cover" class="w-44 h-44 rounded-2xl bg-gradient-to-tr from-aura-green to-blue-600 flex items-center justify-center shadow-2xl shadow-aura-green/10">
+            <i data-lucide="music" class="w-16 h-16 text-white"></i>
+          </div>
+          <div>
+            <span class="text-xs uppercase font-bold text-aura-green tracking-wider">Grojaraštis</span>
+            <h2 id="current-playlist-title" class="text-3xl sm:text-4xl font-extrabold text-white mt-1">Populiarūs Hitai 2026</h2>
+            <p id="current-playlist-desc" class="text-xs text-gray-400 mt-2">Nemokamai sinchronizuoti kūriniai tiesioginiam klausymuisi.</p>
+            <div class="flex items-center gap-3 mt-4">
+              <button onclick="playTrack(0)" class="w-12 h-12 rounded-full bg-aura-green text-black flex items-center justify-center hover:scale-105 transition shadow-lg shadow-aura-green/30">
+                <i data-lucide="play" class="w-6 h-6 fill-black ml-0.5"></i>
+              </button>
+              <span id="track-count-badge" class="text-xs text-gray-400">5 dainos</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dainų sąrašo lentelė -->
+        <div class="border-t border-aura-800/80 pt-4">
+          <div class="grid grid-cols-12 text-xs uppercase font-bold text-gray-500 px-4 py-2 border-b border-aura-800/40">
+            <span class="col-span-1 text-center">#</span>
+            <span class="col-span-6 sm:col-span-7">Pavadinimas</span>
+            <span class="col-span-3 sm:col-span-3">Atlikėjas</span>
+            <span class="col-span-2 sm:col-span-1 text-right">Veiksmas</span>
+          </div>
+
+          <div id="track-list" class="divide-y divide-aura-800/20 mt-1">
+            <!-- Dainos bus įkeltos dinamiškai -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 3. GROTUVAS (BOTTOM PLAYER BAR) -->
+  <footer class="h-24 bg-aura-900/95 border-t border-aura-800 px-4 sm:px-6 flex items-center justify-between z-40 backdrop-blur-md">
+    
+    <!-- Kairė: Dabartinė daina -->
+    <div class="flex items-center gap-3.5 w-1/4 min-w-[180px]">
+      <img id="player-thumb" src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=120" class="w-14 h-14 rounded-xl object-cover ring-1 ring-white/10 shadow-md">
+      <div class="overflow-hidden">
+        <h4 id="player-title" class="text-sm font-semibold text-white truncate">Pasirinkite dainą</h4>
+        <p id="player-artist" class="text-xs text-gray-400 truncate">AURA Stream</p>
+      </div>
+      <button class="text-gray-400 hover:text-aura-green transition hidden sm:block">
+        <i data-lucide="heart" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- Centras: Valdymas ir eigos juosta -->
+    <div class="flex flex-col items-center gap-1.5 w-2/4 max-w-xl">
+      <div class="flex items-center gap-5">
+        <button onclick="prevTrack()" class="text-gray-400 hover:text-white transition">
+          <i data-lucide="skip-back" class="w-5 h-5"></i>
+        </button>
+        <button id="master-play-btn" onclick="togglePlay()" class="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition shadow-md">
+          <i id="master-play-icon" data-lucide="play" class="w-5 h-5 fill-black ml-0.5"></i>
+        </button>
+        <button onclick="nextTrack()" class="text-gray-400 hover:text-white transition">
+          <i data-lucide="skip-forward" class="w-5 h-5"></i>
         </button>
       </div>
-    </section>
 
-    <!-- 5. APATINIS NAVIGACIJOS MENIU -->
-    <nav id="bottom-nav" class="hidden h-16 border-t border-onyx-800 bg-onyx-900/95 backdrop-blur-md flex items-center justify-around px-2 z-10">
-      <button data-tab="chats" class="nav-btn flex flex-col items-center gap-1 text-onyx-accent">
-        <i data-lucide="message-circle" class="w-5 h-5"></i>
-        <span class="text-[10px] font-medium">Pokalbiai</span>
+      <!-- Laiko juosta -->
+      <div class="w-full flex items-center gap-3 text-[11px] text-gray-400 font-mono">
+        <span id="current-time">0:00</span>
+        <input id="seek-slider" type="range" min="0" max="100" value="0" class="flex-1 h-1 bg-aura-700 rounded-lg cursor-pointer">
+        <span id="duration-time">0:00</span>
+      </div>
+    </div>
+
+    <!-- Dešinė: Garsumas ir statusas -->
+    <div class="flex items-center justify-end gap-3 w-1/4">
+      <i data-lucide="volume-2" class="w-4 h-4 text-gray-400"></i>
+      <input id="volume-slider" type="range" min="0" max="100" value="80" class="w-20 sm:w-28 h-1 bg-aura-700 rounded-lg cursor-pointer">
+    </div>
+  </footer>
+
+  <!-- 4. MODALINIS LANGAS: GROJARAŠČIO PERKĖLIMAS (IMPORT) -->
+  <div id="import-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-aura-900 border border-aura-700 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative">
+      <button onclick="closeImportModal()" class="absolute right-5 top-5 text-gray-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
       </button>
 
-      <button data-tab="explore" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-gray-200">
-        <i data-lucide="compass" class="w-5 h-5"></i>
-        <span class="text-[10px] font-medium">Vieša</span>
-      </button>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-aura-green/20 text-aura-green flex items-center justify-center">
+          <i data-lucide="download-cloud" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-white">Perkelti grojaraštį</h3>
+          <p class="text-xs text-gray-400">Iš Spotify, Apple Music arba YouTube</p>
+        </div>
+      </div>
 
-      <button data-tab="friends" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-gray-200">
-        <i data-lucide="users" class="w-5 h-5"></i>
-        <span class="text-[10px] font-medium">Draugai</span>
-      </button>
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-semibold text-gray-300 block mb-1">Grojaraščio pavadinimas</label>
+          <input id="import-playlist-name" type="text" placeholder="Mano mėgstamiausios" class="w-full bg-aura-800 border border-aura-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-aura-green">
+        </div>
 
-      <button data-tab="profile" class="nav-btn flex flex-col items-center gap-1 text-gray-400 hover:text-gray-200">
-        <i data-lucide="user" class="w-5 h-5"></i>
-        <span class="text-[10px] font-medium">Profilis</span>
-      </button>
-    </nav>
+        <div>
+          <label class="text-xs font-semibold text-gray-300 block mb-1">
+            Įklijuokite dainų sąrašą arba YouTube grojaraštį:
+          </label>
+          <p class="text-[11px] text-gray-400 mb-2">
+            Patarimas: nukopijuokite dainas formatu: <i>Atlikėjas - Pavadinimas</i> (po vieną eilutėje).
+          </p>
+          <textarea id="import-track-data" rows="5" placeholder="The Weeknd - Blinding Lights&#10;Dua Lipa - Levitating&#10;Coldplay - Yellow" class="w-full bg-aura-800 border border-aura-700 rounded-xl p-3 text-sm text-white font-mono focus:outline-none focus:border-aura-green"></textarea>
+        </div>
+
+        <div class="flex justify-between items-center pt-2">
+          <button onclick="loadSampleSpotifyList()" class="text-xs text-aura-green hover:underline">
+            Įkelti pavyzdinį Spotify sąrašą
+          </button>
+          
+          <div class="flex gap-2">
+            <button onclick="closeImportModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-aura-800 hover:bg-aura-700 text-gray-300">Atšaukti</button>
+            <button onclick="processImport()" class="px-5 py-2 rounded-xl text-xs font-bold bg-aura-green hover:bg-aura-green/90 text-black">Perkelti dainas</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- Paslėptas YouTube Audio variklis -->
+  <div id="yt-audio-player" class="hidden pointer-events-none"></div>
+
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
 
   <!-- JAVASCRIPT LOGIKA -->
   <script>
-    // --- 1. FIREBASE KONFIGŪRACIJA ---
-    // Pakeiskite šiuos duomenis savo Firebase konsolės duomenimis
-    const firebaseConfig = {
-      apiKey: "JUSU_FIREBASE_API_KEY",
-      authDomain: "jusu-projektas.firebaseapp.com",
-      projectId: "jusu-projektas",
-      storageBucket: "jusu-projektas.appspot.com",
-      messagingSenderId: "1234567890",
-      appId: "1:1234567890:web:abcdef"
-    };
-
-    let isFirebaseReady = false;
-    let auth, db;
-
-    try {
-      if (firebaseConfig.apiKey !== "JUSU_FIREBASE_API_KEY") {
-        firebase.initializeApp(firebaseConfig);
-        auth = firebase.auth();
-        db = firebase.firestore();
-        isFirebaseReady = true;
+    // 1. DUOMENŲ BAZĖ (Numatytasis grojaraštis su patvirtintais YouTube Audio ID)
+    let playlists = [
+      {
+        id: 'hits_2026',
+        name: 'Populiarūs Hitai 2026',
+        description: 'Nemokama muzika tiesiai per YouTube garso srautą.',
+        tracks: [
+          { title: 'Blinding Lights', artist: 'The Weeknd', ytId: '4NRXx6U8ABQ', duration: '3:20' },
+          { title: 'Levitating', artist: 'Dua Lipa', ytId: 'TUVcZfQe-Kw', duration: '3:23' },
+          { title: 'In My Mind', artist: 'Dynoro', ytId: 'W9P_qUnVuFg', duration: '3:05' },
+          { title: 'Stay', artist: 'The Kid LAROI, Justin Bieber', ytId: 'kTJczUoc26U', duration: '2:21' },
+          { title: 'As It Was', artist: 'Harry Styles', ytId: 'H5v3kku4y6Q', duration: '2:47' }
+        ]
       }
-    } catch (e) {
-      console.warn("Firebase nekonfigūruotas arba kilo klaida, naudojama demonstracinė atmintis.", e);
+    ];
+
+    let currentPlaylistIndex = 0;
+    let currentTrackIndex = -1;
+    let isPlaying = false;
+    let ytPlayer = null;
+    let progressTimer = null;
+
+    // 2. YOUTUBE IFRAME API INICIALIZACIJA
+    function onYouTubeIframeAPIReady() {
+      ytPlayer = new YT.Player('yt-audio-player', {
+        height: '0',
+        width: '0',
+        playerVars: {
+          'autoplay': 0,
+          'controls': 0,
+          'disablekb': 1,
+          'fs': 0,
+          'rel': 0
+        },
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
     }
 
-    // --- 2. BŪSENOS VALDYMAS (STATE) ---
-    let currentUser = null;
-    let currentChatRecipient = null;
-    let currentChatId = null;
-    let unsubscribeMessages = null;
-    let attachedImageBase64 = null;
-
-    // Demonstraciniai duomenys (veikia iškart naršyklėje)
-    const mockUsers = [
-      { uid: 'user_monika', displayName: 'Monika B.', email: 'monika@example.com', photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' },
-      { uid: 'user_tomas', displayName: 'Tomas K.', email: 'tomas@example.com', photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150' }
-    ];
-
-    let mockMessages = [
-      { id: '1', chatId: 'demo_chat', senderId: 'user_monika', text: 'Labas! Kaip tau patinka naujasis ONYX tamsus dizainas?', timestamp: Date.now() - 600000 },
-      { id: '2', chatId: 'demo_chat', senderId: 'demo_current', text: 'Labas! Super, labai patogus ir greitas.', timestamp: Date.now() - 300000 }
-    ];
-
-    let blockedUsersList = [];
-
-    // --- 3. INICIALIZACIJA IR NAVIGACIJA ---
-    function init() {
+    function onPlayerReady(event) {
+      renderPlaylists();
+      renderTracks();
       lucide.createIcons();
-      setupEventListeners();
+    }
 
-      if (isFirebaseReady) {
-        auth.onAuthStateChanged(user => {
-          if (user) {
-            handleUserLoggedIn({
-              uid: user.uid,
-              displayName: user.displayName || 'Vartotojas',
-              email: user.email,
-              photoURL: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
-            });
-          } else {
-            handleUserLoggedOut();
-          }
-        });
+    function onPlayerStateChange(event) {
+      // YT.PlayerState.PLAYING = 1, PAUSED = 2, ENDED = 0
+      if (event.data === YT.PlayerState.PLAYING) {
+        isPlaying = true;
+        updatePlayIcons();
+        startProgressLoop();
+      } else if (event.data === YT.PlayerState.PAUSED) {
+        isPlaying = false;
+        updatePlayIcons();
+        clearInterval(progressTimer);
+      } else if (event.data === YT.PlayerState.ENDED) {
+        nextTrack();
       }
     }
 
-    function switchTab(tabId) {
-      document.querySelectorAll('#tab-chats, #tab-explore, #tab-friends, #tab-profile').forEach(el => el.classList.add('hidden'));
-      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+    // 3. GROTUVAS IR VALDYMAS
+    function playTrack(index) {
+      const currentList = playlists[currentPlaylistIndex].tracks;
+      if (!currentList[index]) return;
 
-      // Pakeisti meniu mygtukų spalvas
-      document.querySelectorAll('.nav-btn').forEach(btn => {
-        if (btn.getAttribute('data-tab') === tabId) {
-          btn.classList.add('text-onyx-accent');
-          btn.classList.remove('text-gray-400');
-        } else {
-          btn.classList.remove('text-onyx-accent');
-          btn.classList.add('text-gray-400');
-        }
-      });
+      currentTrackIndex = index;
+      const track = currentList[index];
 
-      const titles = { chats: 'Pokalbiai', explore: 'Atrasti', friends: 'Draugai', profile: 'Profilis' };
-      document.getElementById('header-title').innerText = titles[tabId];
-    }
+      // Atnaujiname UI
+      document.getElementById('player-title').innerText = track.title;
+      document.getElementById('player-artist').innerText = track.artist;
+      document.getElementById('player-thumb').src = `https://img.youtube.com/vi/${track.ytId}/hqdefault.jpg`;
 
-    // --- 4. PRISIJUNGIMO LOGIKA ---
-    function handleUserLoggedIn(user) {
-      currentUser = user;
-      document.getElementById('auth-screen').classList.add('hidden');
-      document.getElementById('main-header').classList.remove('hidden');
-      document.getElementById('bottom-nav').classList.remove('hidden');
-
-      // Profilio atvaizdavimas
-      document.getElementById('nav-user-avatar').src = user.photoURL;
-      document.getElementById('profile-big-avatar').src = user.photoURL;
-      document.getElementById('profile-name').innerText = user.displayName;
-      document.getElementById('profile-email').innerText = user.email;
-
-      switchTab('chats');
-      loadChats();
-      loadExploreFeed();
-      loadFriends();
-
-      if (isFirebaseReady) {
-        // Įrašyti/atnaujinti Firestore
-        db.collection('users').doc(user.uid).set({
-          uid: user.uid,
-          displayName: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-          lastSeen: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+      // Užkrauname ir grojame per YouTube API
+      if (ytPlayer && ytPlayer.loadVideoById) {
+        ytPlayer.loadVideoById(track.ytId);
+        ytPlayer.playVideo();
       }
+
+      renderTracks();
     }
 
-    function handleUserLoggedOut() {
-      currentUser = null;
-      document.getElementById('auth-screen').classList.remove('hidden');
-      document.getElementById('main-header').classList.add('hidden');
-      document.getElementById('bottom-nav').classList.add('hidden');
-      document.querySelectorAll('#tab-chats, #tab-explore, #tab-friends, #tab-profile').forEach(el => el.classList.add('hidden'));
-    }
+    function togglePlay() {
+      if (!ytPlayer || currentTrackIndex === -1) {
+        if (playlists[currentPlaylistIndex].tracks.length > 0) playTrack(0);
+        return;
+      }
 
-    // --- 5. POKALBIŲ IR ŽINUČIŲ VALDYMAS ---
-    function loadChats() {
-      const chatsList = document.getElementById('chats-list');
-      chatsList.innerHTML = '';
-
-      const usersToDisplay = mockUsers.filter(u => !blockedUsersList.includes(u.uid));
-
-      usersToDisplay.forEach(otherUser => {
-        const item = document.createElement('div');
-        item.className = "flex items-center gap-3 p-3 rounded-2xl bg-onyx-800/40 hover:bg-onyx-800 transition cursor-pointer border border-transparent hover:border-onyx-700";
-        item.innerHTML = `
-          <div class="relative">
-            <img src="${otherUser.photoURL}" class="w-12 h-12 rounded-2xl object-cover">
-            <span class="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-onyx-900"></span>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex justify-between items-baseline">
-              <h4 class="font-semibold text-sm truncate">${otherUser.displayName}</h4>
-              <span class="text-[10px] text-gray-500">ką tik</span>
-            </div>
-            <p class="text-xs text-gray-400 truncate mt-0.5">Spauskite, norėdami atidaryti pokalbį</p>
-          </div>
-        `;
-        item.onclick = () => openChat(otherUser);
-        chatsList.appendChild(item);
-      });
-    }
-
-    function openChat(recipient) {
-      currentChatRecipient = recipient;
-      currentChatId = isFirebaseReady 
-        ? [currentUser.uid, recipient.uid].sort().join('_') 
-        : 'demo_chat';
-
-      document.getElementById('chat-recipient-name').innerText = recipient.displayName;
-      document.getElementById('chat-recipient-avatar').src = recipient.photoURL;
-      document.getElementById('chat-window').classList.remove('hidden');
-      
-      listenForMessages();
-    }
-
-    function closeChat() {
-      document.getElementById('chat-window').classList.add('hidden');
-      if (unsubscribeMessages) unsubscribeMessages();
-      currentChatRecipient = null;
-      currentChatId = null;
-    }
-
-    function listenForMessages() {
-      const container = document.getElementById('messages-container');
-      container.innerHTML = '';
-
-      if (isFirebaseReady) {
-        // Saugi užklausa: pokalbiai pasiekiami tik dalyviams
-        unsubscribeMessages = db.collection('chats').doc(currentChatId).collection('messages')
-          .orderBy('timestamp', 'asc')
-          .onSnapshot(snapshot => {
-            container.innerHTML = '';
-            snapshot.forEach(doc => {
-              renderMessage(doc.data());
-            });
-            container.scrollTop = container.scrollHeight;
-          });
+      if (isPlaying) {
+        ytPlayer.pauseVideo();
       } else {
-        // Demonstracinio režimo žinutės
-        mockMessages.forEach(msg => renderMessage(msg));
-        container.scrollTop = container.scrollHeight;
+        ytPlayer.playVideo();
       }
     }
 
-    function renderMessage(msg) {
-      const container = document.getElementById('messages-container');
-      const isMe = msg.senderId === currentUser.uid || msg.senderId === 'demo_current';
-      
-      const msgDiv = document.createElement('div');
-      msgDiv.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
-
-      let content = '';
-      if (msg.image) {
-        content += `<img src="${msg.image}" class="rounded-xl max-w-[200px] mb-1.5 object-cover border border-onyx-600">`;
-      }
-      if (msg.text) {
-        content += `<div class="px-3.5 py-2 rounded-2xl text-sm ${isMe ? 'bg-onyx-accent text-white rounded-br-none' : 'bg-onyx-800 text-gray-200 border border-onyx-700 rounded-bl-none'}">${msg.text}</div>`;
-      }
-
-      msgDiv.innerHTML = content;
-      container.appendChild(msgDiv);
-    }
-
-    async function sendMessage() {
-      const input = document.getElementById('message-input');
-      const text = input.value.trim();
-
-      if (!text && !attachedImageBase64) return;
-
-      const messageData = {
-        senderId: currentUser.uid,
-        text: text || null,
-        image: attachedImageBase64 || null,
-        timestamp: Date.now()
-      };
-
-      if (isFirebaseReady) {
-        // Įrašoma į Firestore pokalbių kolekciją
-        const chatRef = db.collection('chats').doc(currentChatId);
-        
-        await chatRef.set({
-          participants: [currentUser.uid, currentChatRecipient.uid],
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        await chatRef.collection('messages').add({
-          ...messageData,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
+    function nextTrack() {
+      const list = playlists[currentPlaylistIndex].tracks;
+      if (currentTrackIndex + 1 < list.length) {
+        playTrack(currentTrackIndex + 1);
       } else {
-        mockMessages.push(messageData);
-        renderMessage(messageData);
-        const container = document.getElementById('messages-container');
-        container.scrollTop = container.scrollHeight;
-      }
-
-      // Išvalymas
-      input.value = '';
-      attachedImageBase64 = null;
-      document.getElementById('image-preview-bar').classList.add('hidden');
-    }
-
-    // --- 6. NUOTRAUKŲ GLAUDINIMAS (Direct Client-Side Canvas) ---
-    function handleImageSelection(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        const img = new Image();
-        img.onload = function() {
-          // Sumažiname nuotrauką privačiam pokalbiui (iki 800px)
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
-          const scale = MAX_WIDTH / img.width;
-          canvas.width = (img.width > MAX_WIDTH) ? MAX_WIDTH : img.width;
-          canvas.height = (img.width > MAX_WIDTH) ? img.height * scale : img.height;
-
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          
-          attachedImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
-
-          // Rodyti peržiūros juostą
-          document.getElementById('preview-img-tag').src = attachedImageBase64;
-          document.getElementById('image-preview-bar').classList.remove('hidden');
-        };
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-
-    // --- 7. VIEŠAS PUSLAPIS IR DRAUGAI ---
-    function loadExploreFeed() {
-      const feed = document.getElementById('public-feed');
-      feed.innerHTML = `
-        <div class="bg-onyx-800 rounded-2xl p-4 border border-onyx-700">
-          <div class="flex items-center gap-3 mb-2">
-            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150" class="w-8 h-8 rounded-full">
-            <div>
-              <h5 class="text-xs font-bold">Tomas K.</h5>
-              <span class="text-[10px] text-gray-500">Prieš 1 val.</span>
-            </div>
-          </div>
-          <p class="text-sm text-gray-300">Sveiki atvykę į ONYX viešą erdvę! Čia rodomos naujienos ir bendruomenės pranešimai.</p>
-        </div>
-      `;
-    }
-
-    function loadFriends() {
-      const list = document.getElementById('friends-list');
-      list.innerHTML = '';
-      mockUsers.forEach(u => {
-        const row = document.createElement('div');
-        row.className = "flex items-center justify-between p-3 bg-onyx-800/40 rounded-xl border border-onyx-800";
-        row.innerHTML = `
-          <div class="flex items-center gap-2">
-            <img src="${u.photoURL}" class="w-8 h-8 rounded-full object-cover">
-            <span class="text-sm font-medium">${u.displayName}</span>
-          </div>
-          <button class="px-2.5 py-1 bg-onyx-700 text-xs rounded-lg text-gray-300 hover:text-white">Draugas</button>
-        `;
-        list.appendChild(row);
-      });
-    }
-
-    // --- 8. PRIVATUMAS: BLOKAVIMAS IR PRANEŠIMAI ---
-    function blockCurrentRecipient() {
-      if (!currentChatRecipient) return;
-      if (confirm(`Ar tikrai norite užblokuoti ${currentChatRecipient.displayName}?`)) {
-        blockedUsersList.push(currentChatRecipient.uid);
-        alert(`${currentChatRecipient.displayName} sėkmingai užblokuotas.`);
-        closeChat();
-        loadChats();
+        playTrack(0); // Ciklas nuo pradžių
       }
     }
 
-    function reportCurrentRecipient() {
-      if (!currentChatRecipient) return;
-      const reason = prompt("Nurodykite pranešimo priežastį (pvz.: netinkamas turinys, šlamštas):");
-      if (reason) {
-        if (isFirebaseReady) {
-          db.collection('reports').add({
-            reportedBy: currentUser.uid,
-            reportedUser: currentChatRecipient.uid,
-            reason: reason,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-          });
+    function prevTrack() {
+      if (currentTrackIndex > 0) {
+        playTrack(currentTrackIndex - 1);
+      } else {
+        playTrack(0);
+      }
+    }
+
+    function updatePlayIcons() {
+      const masterIcon = document.getElementById('master-play-icon');
+      if (isPlaying) {
+        masterIcon.setAttribute('data-lucide', 'pause');
+      } else {
+        masterIcon.setAttribute('data-lucide', 'play');
+      }
+      lucide.createIcons();
+    }
+
+    function startProgressLoop() {
+      clearInterval(progressTimer);
+      progressTimer = setInterval(() => {
+        if (!ytPlayer || !ytPlayer.getCurrentTime) return;
+        const current = ytPlayer.getCurrentTime();
+        const total = ytPlayer.getDuration();
+
+        if (total > 0) {
+          document.getElementById('current-time').innerText = formatTime(current);
+          document.getElementById('duration-time').innerText = formatTime(total);
+          document.getElementById('seek-slider').value = (current / total) * 100;
         }
-        alert("Ačiū. Pranešimas gautas ir bus peržiūrėtas.");
-        document.getElementById('chat-dropdown').classList.add('hidden');
-      }
+      }, 500);
     }
 
-    // --- 9. RENGINIŲ KLAUSYTOJAI (EVENT LISTENERS) ---
-    function setupEventListeners() {
-      // Google prisijungimas
-      document.getElementById('google-login-btn').addEventListener('click', () => {
-        if (!isFirebaseReady) {
-          alert("Firebase raktai dar neįvesti. Naudokite mygtuką 'Išbandyti demonstraciniu režimu' arba įklijuokite savo raktus faile.");
-          return;
-        }
-        const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).catch(err => alert("Klaida: " + err.message));
-      });
-
-      // Demo prisijungimas
-      document.getElementById('demo-login-btn').addEventListener('click', () => {
-        handleUserLoggedIn({
-          uid: 'demo_current',
-          displayName: 'Demo Vartotojas',
-          email: 'demo@onyx.local',
-          photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
-        });
-      });
-
-      // Navigacija per apatinį meniu
-      document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
-      });
-
-      // Pokalbio mygtukai
-      document.getElementById('back-to-chats').addEventListener('click', closeChat);
-      document.getElementById('send-message-btn').addEventListener('click', sendMessage);
-      document.getElementById('message-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMessage();
-      });
-
-      // Nuotraukos įkėlimas
-      document.getElementById('image-input').addEventListener('change', handleImageSelection);
-      document.getElementById('cancel-image-btn').addEventListener('click', () => {
-        attachedImageBase64 = null;
-        document.getElementById('image-preview-bar').classList.add('hidden');
-      });
-
-      // Privatumo meniu
-      document.getElementById('chat-menu-btn').addEventListener('click', () => {
-        document.getElementById('chat-dropdown').classList.toggle('hidden');
-      });
-      document.getElementById('block-user-btn').addEventListener('click', blockCurrentRecipient);
-      document.getElementById('report-user-btn').addEventListener('click', reportCurrentRecipient);
-
-      // Atsijungimas
-      document.getElementById('logout-btn').addEventListener('click', () => {
-        if (isFirebaseReady) auth.signOut();
-        handleUserLoggedOut();
-      });
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
     }
 
-    // Paleidžiame programą
-    document.addEventListener('DOMContentLoaded', init);
-  </script>
-</body>
-</html>
+    // 4. EKRANŲ IR DAINŲ RENDERINIMAS
+    function renderTracks() {
+      const listContainer = document.getElementById('track-list');
+      listContainer.innerHTML = '';
+
+      const currentList = playlists[currentPlaylistIndex].tracks;
+      document.getElementById('track-count-ba
