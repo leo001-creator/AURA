@@ -4,7 +4,1402 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AURA – Nemokama Muzikos Platforma</title>
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>VIBRA Music – Nemokamas teisėtas transliavimas</title>
 
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            vibra: {
+              950: '#070709',
+              900: '#0d0d12',
+              850: '#12121a',
+              800: '#181824',
+              700: '#232334',
+              600: '#323249',
+              violet: '#a855f7',
+              violetHover: '#9333ea',
+              cyan: '#06b6d4',
+              surface: 'rgba(255, 255, 255, 0.04)'
+            }
+          },
+          animation: {
+            'spin-slow': 'spin 8s linear infinite',
+            'pulse-subtle': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Firebase SDKs (Compat versija tiesioginiam veikimui naršyklėje) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    input[type="range"] { accent-color: #a855f7; }
+  </style>
+</head>
+<body class="bg-vibra-950 text-gray-100 font-sans antialiased h-screen flex flex-col overflow-hidden select-none">
+
+  <!-- Pagrindinis karkasas -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- 1. KAIRYSIS ŠONINIS MENIU (DESKTOP) -->
+    <aside class="w-64 bg-vibra-900 border-r border-vibra-800/80 flex flex-col justify-between p-4 hidden md:flex shrink-0 z-20">
+      <div class="space-y-6">
+        <!-- Logotipas -->
+        <div class="flex items-center gap-3 px-2 cursor-pointer" onclick="navigateTo('home')">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-vibra-violet via-purple-600 to-vibra-cyan flex items-center justify-center text-white shadow-lg shadow-vibra-violet/25">
+            <i data-lucide="activity" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h1 class="font-extrabold text-xl tracking-wider text-white">VIBRA</h1>
+            <span class="text-[10px] text-vibra-violet uppercase tracking-widest font-semibold">Free Sound</span>
+          </div>
+        </div>
+
+        <!-- Pagrindinė navigacija -->
+        <nav class="space-y-1 text-sm font-medium">
+          <button onclick="navigateTo('home')" id="nav-btn-home" class="nav-item w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-white bg-vibra-800 transition">
+            <i data-lucide="home" class="w-5 h-5 text-vibra-violet"></i> Pradžia
+          </button>
+          <button onclick="navigateTo('search')" id="nav-btn-search" class="nav-item w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-gray-400 hover:text-white hover:bg-vibra-800/50 transition">
+            <i data-lucide="search" class="w-5 h-5"></i> Paieška
+          </button>
+          <button onclick="navigateTo('catalog')" id="nav-btn-catalog" class="nav-item w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-gray-400 hover:text-white hover:bg-vibra-800/50 transition">
+            <i data-lucide="compass" class="w-5 h-5"></i> Žanrai ir Katalogas
+          </button>
+          <button onclick="navigateTo('import')" id="nav-btn-import" class="nav-item w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-gray-400 hover:text-white hover:bg-vibra-800/50 transition">
+            <i data-lucide="folder-input" class="w-5 h-5 text-vibra-cyan"></i> Importuoti grojaraštį
+          </button>
+        </nav>
+
+        <!-- Bibliotekos sekcija -->
+        <div class="pt-4 border-t border-vibra-800/80">
+          <div class="flex items-center justify-between px-2 mb-2">
+            <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Tavo Biblioteka</span>
+            <button onclick="promptCreatePlaylist()" title="Naujas grojaraštis" class="p-1 text-gray-400 hover:text-white hover:bg-vibra-800 rounded-lg transition">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+            </button>
+          </div>
+          
+          <div class="space-y-1">
+            <button onclick="navigateTo('library')" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs text-gray-300 hover:bg-vibra-800/50 transition">
+              <i data-lucide="heart" class="w-4 h-4 text-red-400"></i> Pamėgtos dainos
+            </button>
+          </div>
+
+          <!-- Naudotojo grojaraščių sąrašas -->
+          <div id="sidebar-playlists-list" class="space-y-1 max-h-40 overflow-y-auto no-scrollbar mt-2 text-xs">
+            <!-- Dinamiškai generuojama -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Remiamos paslaugos skiltis (Reklaminis baneris) -->
+      <div class="p-3.5 bg-gradient-to-br from-vibra-850 to-vibra-800 border border-vibra-700/60 rounded-2xl relative overflow-hidden">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[9px] font-bold uppercase tracking-wider bg-vibra-violet/20 text-vibra-violet px-2 py-0.5 rounded-md">Remiama</span>
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-gray-400"></i>
+        </div>
+        <h4 class="text-xs font-bold text-white">100% Nemokama muzika</h4>
+        <p class="text-[11px] text-gray-400 mt-1">Dėka demonstracinių rėmėjų banerių, muzikos transliacija išlieka visiškai atvira.</p>
+      </div>
+    </aside>
+
+    <!-- 2. VIDURINIS TURINIO EKRANAS (PUSLAPIAI) -->
+    <main class="flex-1 bg-gradient-to-b from-vibra-900 via-vibra-950 to-vibra-950 flex flex-col overflow-hidden relative">
+      
+      <!-- Viršutinė universali juosta (Top Navbar) -->
+      <header class="h-16 px-4 md:px-8 border-b border-vibra-800/50 flex items-center justify-between bg-vibra-900/60 backdrop-blur-md z-10 shrink-0">
+        <div class="flex items-center gap-3 flex-1 max-w-md">
+          <!-- Naršymo atgal/pirmyn mygtukai -->
+          <div class="flex items-center gap-1 text-gray-400">
+            <button onclick="window.history.back()" class="p-1.5 rounded-full hover:bg-vibra-800 hover:text-white transition">
+              <i data-lucide="chevron-left" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <!-- Greitosios paieškos laukas -->
+          <div class="relative w-full">
+            <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3.5 top-3"></i>
+            <input id="global-search-input" type="text" placeholder="Ieškoti dainų, atlikėjų, albumų..." 
+                   class="w-full bg-vibra-800/70 border border-vibra-700/60 rounded-full pl-10 pr-4 py-2 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-vibra-violet transition">
+          </div>
+        </div>
+
+        <!-- Dešinioji pusė: Paskyros / Prisijungimo būsena -->
+        <div class="flex items-center gap-3">
+          <div id="auth-header-container">
+            <!-- Dinamiškai rodomas vartotojo profilis arba Prisijungti mygtukas -->
+          </div>
+        </div>
+      </header>
+
+      <!-- Pagrindinis slenkantis turinys -->
+      <div id="page-content" class="flex-1 overflow-y-auto no-scrollbar p-4 md:p-8 space-y-8">
+        <!-- PUSLAPIS 1: PAGRINDINIS (HOME) -->
+        <section id="view-home" class="page-view space-y-8">
+          <!-- Pasveikinimas ir rekomendacijų herojus -->
+          <div class="relative rounded-3xl p-6 md:p-8 overflow-hidden bg-gradient-to-r from-purple-950/70 via-vibra-850 to-vibra-900 border border-vibra-violet/30 shadow-2xl">
+            <div class="max-w-xl relative z-10">
+              <span class="text-xs uppercase font-bold tracking-wider text-vibra-cyan bg-vibra-cyan/10 px-3 py-1 rounded-full">Legali ir atvira muzika</span>
+              <h2 class="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">Muzika be apribojimų ir be prenumeratos.</h2>
+              <p class="text-xs md:text-sm text-gray-300 mt-2">Klausykis atviro katalogo kūrinių, importuok savo grojaraščius ir kurk savo asmeninę biblioteką.</p>
+              <div class="flex flex-wrap gap-3 mt-5">
+                <button onclick="playAllCatalog()" class="px-5 py-2.5 bg-vibra-violet hover:bg-vibra-violetHover text-white font-bold rounded-full text-xs transition flex items-center gap-2 shadow-lg shadow-vibra-violet/30">
+                  <i data-lucide="play" class="w-4 h-4 fill-white"></i> Paleisti viską
+                </button>
+                <button onclick="navigateTo('import')" class="px-5 py-2.5 bg-vibra-800 hover:bg-vibra-700 text-gray-200 font-semibold rounded-full text-xs transition border border-vibra-700">
+                  Perkelti iš kitos platformos
+                </button>
+              </div>
+            </div>
+            <div class="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-vibra-violet/10 to-transparent pointer-events-none"></div>
+          </div>
+
+          <!-- Populiarūs demonstraciniai kūriniai -->
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-bold text-white">Rekomenduojami kūriniai</h3>
+              <span class="text-xs text-gray-400">Atvira licencija (CC)</span>
+            </div>
+            <div id="home-featured-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              <!-- Dinamiškos kortelės -->
+            </div>
+          </div>
+
+          <!-- Demonstracinė rėmėjo reklamos kortelė -->
+          <div class="p-4 rounded-2xl bg-vibra-850/80 border border-vibra-700/50 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-xl bg-vibra-800 border border-vibra-700 flex items-center justify-center text-vibra-violet">
+                <i data-lucide="volume-2" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <span class="text-[9px] font-bold uppercase tracking-wider text-vibra-cyan">Demonstracinė rėmėjo vieta</span>
+                <h4 class="text-sm font-bold text-white">Nemokamas klausymasis su etiškais intarpais</h4>
+                <p class="text-xs text-gray-400">Jokių netikėtų langų ar garso spąstų – tik aiškiai pažymėti rėmėjai.</p>
+              </div>
+            </div>
+            <button class="px-4 py-2 bg-vibra-800 hover:bg-vibra-700 border border-vibra-600 rounded-xl text-xs font-semibold text-gray-300">
+              Sužinoti apie rėmimą
+            </button>
+          </div>
+        </section>
+
+        <!-- PUSLAPIS 2: PAIEŠKA (SEARCH) -->
+        <section id="view-search" class="page-view hidden space-y-6">
+          <h2 class="text-2xl font-bold text-white">Muzikos paieška</h2>
+          <div class="relative max-w-xl">
+            <i data-lucide="search" class="w-5 h-5 text-gray-400 absolute left-4 top-3.5"></i>
+            <input id="search-page-input" type="text" placeholder="Įveskite dainos pavadinimą, žanrą arba atlikėją..." 
+                   class="w-full bg-vibra-800 border border-vibra-700 rounded-2xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:border-vibra-violet">
+          </div>
+          <div id="search-results-list" class="space-y-2 mt-4">
+            <!-- Paieškos rezultatai -->
+          </div>
+        </section>
+
+        <!-- PUSLAPIS 3: KATALOGAS IR ŽANRAI (CATALOG) -->
+        <section id="view-catalog" class="page-view hidden space-y-6">
+          <div>
+            <h2 class="text-2xl font-bold text-white">Muzikos žanrai</h2>
+            <p class="text-xs text-gray-400 mt-1">Naršykite teisėtą muzikos biblioteką pagal nuotaiką.</p>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4" id="genre-cards-container">
+            <!-- Žanrų kortelės -->
+          </div>
+        </section>
+
+        <!-- PUSLAPIS 4: ATLIKĖJO PERŽIŪRA (ARTIST) -->
+        <section id="view-artist" class="page-view hidden space-y-6">
+          <div class="flex items-end gap-6 p-6 rounded-3xl bg-gradient-to-t from-vibra-850 to-vibra-800 border border-vibra-700/60">
+            <img id="artist-view-img" src="" class="w-32 h-32 md:w-44 md:h-44 rounded-full object-cover shadow-2xl border-4 border-vibra-800">
+            <div>
+              <span class="text-xs font-bold text-vibra-violet uppercase tracking-widest">Atlikėjas</span>
+              <h2 id="artist-view-name" class="text-3xl md:text-5xl font-black text-white mt-1"></h2>
+              <p id="artist-view-bio" class="text-xs text-gray-400 mt-2 max-w-md"></p>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white mb-3">Atlikėjo kūriniai kataloge</h3>
+            <div id="artist-tracks-container" class="space-y-1"></div>
+          </div>
+        </section>
+
+        <!-- PUSLAPIS 5: ALBUMO PERŽIŪRA (ALBUM) -->
+        <section id="view-album" class="page-view hidden space-y-6">
+          <div class="flex items-end gap-6 p-6 rounded-3xl bg-vibra-850 border border-vibra-700/60">
+            <img id="album-view-img" src="" class="w-36 h-36 md:w-48 md:h-48 rounded-2xl object-cover shadow-2xl">
+            <div>
+              <span class="text-xs font-bold text-vibra-cyan uppercase tracking-widest">Albumas</span>
+              <h2 id="album-view-title" class="text-2xl md:text-4xl font-extrabold text-white mt-1"></h2>
+              <p id="album-view-artist" class="text-xs text-gray-300 mt-1"></p>
+            </div>
+          </div>
+          <div id="album-tracks-container" class="space-y-1"></div>
+        </section>
+
+        <!-- PUSLAPIS 6: MANO BIBLIOTEKA (LIBRARY) -->
+        <section id="view-library" class="page-view hidden space-y-6">
+          <h2 class="text-2xl font-bold text-white">Mano Biblioteka</h2>
+          <div>
+            <h3 class="text-base font-bold text-gray-300 mb-3">Pamėgtos dainos (<span id="liked-count-badge">0</span>)</h3>
+            <div id="liked-tracks-list" class="space-y-1"></div>
+          </div>
+          <div class="pt-4 border-t border-vibra-800">
+            <h3 class="text-base font-bold text-gray-300 mb-3">Neseniai klausyta</h3>
+            <div id="history-tracks-list" class="space-y-1"></div>
+          </div>
+        </section>
+
+        <!-- PUSLAPIS 7: GROJARAŠČIO PERŽIŪRA (PLAYLIST DETAIL) -->
+        <section id="view-playlist" class="page-view hidden space-y-6">
+          <div class="flex flex-col sm:flex-row items-start sm:items-end gap-6 p-6 rounded-3xl bg-vibra-850 border border-vibra-700">
+            <div class="w-36 h-36 rounded-2xl bg-gradient-to-tr from-vibra-violet to-vibra-cyan flex items-center justify-center text-white shadow-xl shrink-0">
+              <i data-lucide="music-4" class="w-16 h-16"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <span class="text-xs uppercase font-bold text-vibra-violet tracking-wider">Grojaraštis</span>
+              <h2 id="pl-detail-title" class="text-2xl md:text-4xl font-extrabold text-white mt-1 truncate"></h2>
+              <p id="pl-detail-desc" class="text-xs text-gray-400 mt-1"></p>
+              <div class="flex items-center gap-3 mt-4">
+                <button id="pl-play-all-btn" class="px-5 py-2 rounded-full bg-vibra-violet hover:bg-vibra-violetHover text-white font-bold text-xs flex items-center gap-2 shadow-lg">
+                  <i data-lucide="play" class="w-4 h-4 fill-white"></i> Groti
+                </button>
+                <button onclick="shareCurrentPlaylist()" class="p-2 rounded-full bg-vibra-800 text-gray-300 hover:text-white transition" title="Dalintis nuoroda">
+                  <i data-lucide="share-2" class="w-4 h-4"></i>
+                </button>
+                <button onclick="deleteCurrentPlaylist()" class="p-2 rounded-full bg-vibra-800 text-red-400 hover:text-red-300 transition" title="Ištrinti grojaraštį">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div id="pl-tracks-list" class="space-y-1"></div>
+        </section>
+
+        <!-- PUSLAPIS 8: GROJARAŠČIŲ IMPORTAVIMAS (IMPORT) -->
+        <section id="view-import" class="page-view hidden space-y-6">
+          <div>
+            <h2 class="text-2xl font-bold text-white">Importuoti grojaraštį</h2>
+            <p class="text-xs text-gray-400 mt-1">
+              Perkelkite grojaraštį iš kitų platformų. Mūsų sistema nuskaitys dainų pavadinimus ir suras atitinkamus legalius kūrinius mūsų bibliotekoje.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Spotify kortelė -->
+            <div class="p-5 rounded-2xl bg-vibra-850 border border-vibra-700/60 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">SP</div>
+                  <h4 class="font-bold text-sm text-white">Spotify</h4>
+                </div>
+                <p class="text-xs text-gray-400 leading-relaxed">Importuokite viešo Spotify grojaraščio nuorodą arba dainų sąrašą.</p>
+              </div>
+              <button onclick="openImportDrawer('Spotify')" class="mt-4 w-full py-2 bg-vibra-800 hover:bg-vibra-700 text-white rounded-xl text-xs font-semibold">
+                Pasirinkti
+              </button>
+            </div>
+
+            <!-- YouTube Music kortelė -->
+            <div class="p-5 rounded-2xl bg-vibra-850 border border-vibra-700/60 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center font-bold">YT</div>
+                  <h4 class="font-bold text-sm text-white">YouTube Music</h4>
+                </div>
+                <p class="text-xs text-gray-400 leading-relaxed">Importuokite grojaraščio URL arba vaizdo įrašų sąrašo identifikatorius.</p>
+              </div>
+              <button onclick="openImportDrawer('YouTube Music')" class="mt-4 w-full py-2 bg-vibra-800 hover:bg-vibra-700 text-white rounded-xl text-xs font-semibold">
+                Pasirinkti
+              </button>
+            </div>
+
+            <!-- Apple Music / CSV kortelė -->
+            <div class="p-5 rounded-2xl bg-vibra-850 border border-vibra-700/60 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center font-bold">AP</div>
+                  <h4 class="font-bold text-sm text-white">Apple Music / CSV</h4>
+                </div>
+                <p class="text-xs text-gray-400 leading-relaxed">Įkelkite eksportuotą CSV failą arba dainų sąrašą tekstu.</p>
+              </div>
+              <button onclick="openImportDrawer('Apple Music / CSV')" class="mt-4 w-full py-2 bg-vibra-800 hover:bg-vibra-700 text-white rounded-xl text-xs font-semibold">
+                Pasirinkti
+              </button>
+            </div>
+          </div>
+
+          <!-- Importavimo laukas ir procesas -->
+          <div id="import-active-box" class="p-6 rounded-3xl bg-vibra-850 border border-vibra-700 space-y-4">
+            <h3 id="import-box-platform" class="text-base font-bold text-white">Grojaraščio duomenų įvedimas</h3>
+            
+            <div>
+              <label class="text-xs text-gray-300 font-semibold block mb-1">Grojaraščio pavadinimas naujoje sistemoje:</label>
+              <input id="import-new-name" type="text" placeholder="Mano mėgstamiausia muzika" 
+                     class="w-full bg-vibra-800 border border-vibra-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-vibra-violet">
+            </div>
+
+            <div>
+              <label class="text-xs text-gray-300 font-semibold block mb-1">Įveskite viešą grojaraščio nuorodą ARBA dainų sąrašą (Atlikėjas - Kūrinys):</label>
+              <textarea id="import-raw-data" rows="4" placeholder="Pvz.:&#10;The Weeknd - Blinding Lights&#10;Coldplay - Yellow&#10;arba įklijuokite Spotify/YT nuorodą" 
+                        class="w-full bg-vibra-800 border border-vibra-700 rounded-xl p-3 text-xs text-white font-mono focus:outline-none focus:border-vibra-violet"></textarea>
+            </div>
+
+            <!-- CSV failo įkėlimo alternatyva -->
+            <div class="flex items-center gap-3">
+              <label class="px-3 py-2 bg-vibra-800 border border-vibra-700 rounded-xl text-xs text-gray-300 cursor-pointer hover:bg-vibra-700 flex items-center gap-2">
+                <i data-lucide="upload" class="w-4 h-4"></i> Įkelti CSV failą
+                <input type="file" id="import-csv-file" accept=".csv, .txt" class="hidden" onchange="handleCSVUpload(event)">
+              </label>
+              <span id="csv-filename" class="text-xs text-gray-400">Joks failas nepasirinktas</span>
+            </div>
+
+            <button onclick="executePlaylistImport()" class="w-full py-3 bg-vibra-violet hover:bg-vibra-violetHover text-white font-bold rounded-xl text-xs transition shadow-lg shadow-vibra-violet/20 flex items-center justify-center gap-2">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i> Nuskaityti ir palyginti su katalogu
+            </button>
+          </div>
+
+          <!-- Rezultatų palyginimo ataskaita -->
+          <div id="import-report-container" class="hidden p-6 rounded-3xl bg-vibra-850 border border-vibra-700 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h4 class="font-bold text-white text-sm">Nuskaitymo rezultatas</h4>
+                <p id="import-stat-text" class="text-xs text-gray-400 mt-0.5"></p>
+              </div>
+              <button onclick="saveImportedPlaylistToLibrary()" class="px-4 py-2 bg-vibra-violet hover:bg-vibra-violetHover text-white rounded-xl text-xs font-bold">
+                Išsaugoti mano bibliotekoje
+              </button>
+            </div>
+
+            <div class="border-t border-vibra-800 pt-3">
+              <div class="grid grid-cols-12 text-[11px] font-bold text-gray-500 uppercase px-3 py-1">
+                <span class="col-span-6">Kūrinys</span>
+                <span class="col-span-3">Būsena</span>
+                <span class="col-span-3 text-right">Veiksmas</span>
+              </div>
+              <div id="import-matched-list" class="divide-y divide-vibra-800/40 text-xs"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- PUSLAPIS 9: PRISIJUNGIMAS IR REGISTRACIJA (AUTH) -->
+        <section id="view-auth" class="page-view hidden max-w-md mx-auto py-8">
+          <div class="p-8 rounded-3xl bg-vibra-850 border border-vibra-700/80 shadow-2xl text-center">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-vibra-violet to-vibra-cyan flex items-center justify-center text-white mx-auto mb-4">
+              <i data-lucide="user-check" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-extrabold text-white">VIBRA Paskyra</h3>
+            <p class="text-xs text-gray-400 mt-1">Prisijunkite, kad išsaugotumėte grojaraščius ir istoriją</p>
+
+            <div class="flex bg-vibra-800 p-1 rounded-xl mt-6 border border-vibra-700">
+              <button onclick="setAuthMode('login')" id="btn-auth-mode-login" class="flex-1 py-2 text-xs font-semibold rounded-lg bg-vibra-700 text-white">Prisijungti</button>
+              <button onclick="setAuthMode('register')" id="btn-auth-mode-register" class="flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400">Registruotis</button>
+            </div>
+
+            <!-- Formos laukai -->
+            <form id="auth-main-form" class="mt-4 space-y-3 text-left" onsubmit="handleAuthSubmit(event)">
+              <div id="field-name-container" class="hidden">
+                <label class="text-[11px] font-semibold text-gray-400 uppercase">Vardas</label>
+                <input id="auth-input-name" type="text" placeholder="Jūsų vardas" class="w-full mt-1 bg-vibra-800 border border-vibra-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-vibra-violet">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-semibold text-gray-400 uppercase">El. paštas</label>
+                <input id="auth-input-email" type="email" required placeholder="vardas@pavyzdys.lt" class="w-full mt-1 bg-vibra-800 border border-vibra-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-vibra-violet">
+              </div>
+
+              <div>
+                <label class="text-[11px] font-semibold text-gray-400 uppercase">Slaptažodis</label>
+                <input id="auth-input-pass" type="password" required minlength="6" placeholder="••••••••" class="w-full mt-1 bg-vibra-800 border border-vibra-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-vibra-violet">
+              </div>
+
+              <button type="submit" class="w-full py-2.5 bg-vibra-violet hover:bg-vibra-violetHover text-white font-bold rounded-xl text-xs transition mt-2 shadow-lg shadow-vibra-violet/25">
+                Patvirtinti
+              </button>
+            </form>
+
+            <div class="relative flex items-center justify-center my-4">
+              <div class="border-t border-vibra-700 w-full"></div>
+              <span class="bg-vibra-850 px-2 text-[10px] text-gray-500 uppercase">arba</span>
+              <div class="border-t border-vibra-700 w-full"></div>
+            </div>
+
+            <div class="space-y-2">
+              <button onclick="handleGoogleSignIn()" class="w-full py-2.5 px-4 bg-white hover:bg-gray-100 text-gray-900 font-semibold rounded-xl flex items-center justify-center gap-2 text-xs transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/><path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12 0 14.5s.7 4.8 1.9 7.2l3.7-2.9z"/><path fill="#34A853" d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2-6.4-4.8L1.9 17c1.8 3.7 5.6 6.5 10.1 6.5z"/></svg>
+                Tęsti su Google
+              </button>
+              <button onclick="handleDemoLogin()" class="w-full py-2 px-4 bg-vibra-800 hover:bg-vibra-700 text-gray-300 font-medium rounded-xl text-xs transition">
+                Išbandyti demonstraciniu vartotoju
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- PUSLAPIS 10: PROFILIS IR NUSTATYMAI (PROFILE) -->
+        <section id="view-profile" class="page-view hidden space-y-6 max-w-xl">
+          <h2 class="text-2xl font-bold text-white">Profilis ir Nustatymai</h2>
+          
+          <div class="flex items-center gap-4 p-5 rounded-3xl bg-vibra-850 border border-vibra-700">
+            <img id="profile-img" src="" class="w-16 h-16 rounded-full object-cover ring-2 ring-vibra-violet">
+            <div>
+              <h3 id="profile-display-name" class="font-bold text-base text-white"></h3>
+              <p id="profile-display-email" class="text-xs text-gray-400"></p>
+              <span class="inline-block mt-1 text-[10px] font-semibold text-vibra-cyan bg-vibra-cyan/10 px-2 py-0.5 rounded-full">Nemokamas naudotojas (Free Tier)</span>
+            </div>
+          </div>
+
+          <div class="p-5 rounded-3xl bg-vibra-850 border border-vibra-700 space-y-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Muzikos atkūrimo parametrai</h4>
+            
+            <div class="flex items-center justify-between text-xs">
+              <div>
+                <span class="font-semibold block text-white">Garso kokybė</span>
+                <span class="text-gray-400">Optimizuota sklandžiam transliavimui</span>
+              </div>
+              <span class="font-mono text-vibra-violet font-semibold">192 kbps (AAC/MP3)</span>
+            </div>
+
+            <div class="flex items-center justify-between text-xs pt-3 border-t border-vibra-800">
+              <div>
+                <span class="font-semibold block text-white">Foninis atkūrimas (Background playback)</span>
+                <span class="text-gray-400">W3C MediaSession palaikymas</span>
+              </div>
+              <span class="text-emerald-400 font-semibold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Įjungta
+              </span>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <button onclick="handleLogout()" class="px-5 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-xs font-semibold transition">
+              Atsijungti iš paskyros
+            </button>
+            <button onclick="navigateTo('terms')" class="px-5 py-2.5 bg-vibra-800 hover:bg-vibra-700 text-gray-300 rounded-xl text-xs font-semibold transition">
+              Privatumo politika
+            </button>
+          </div>
+        </section>
+
+        <!-- PUSLAPIS 11: PRIVATUMAS IR SĄLYGOS (TERMS) -->
+        <section id="view-terms" class="page-view hidden space-y-6 max-w-2xl text-xs text-gray-300 leading-relaxed">
+          <h2 class="text-2xl font-bold text-white">Privatumo politika ir taisyklės</h2>
+          
+          <div class="p-6 rounded-3xl bg-vibra-850 border border-vibra-700 space-y-4">
+            <h4 class="text-sm font-bold text-white">1. Teisėtas muzikos naudojimas</h4>
+            <p>Ši demonstracinė platforma nenaudoja nelegalių ar autorinėmis teisėmis apribotų kūrinių kopijų. Visi demonstraciniai garso failai pateikiami pagal „Creative Commons“ atvirąsias licencijas arba viešojo domeno leidimus.</p>
+
+            <h4 class="text-sm font-bold text-white">2. Grojaraščių importavimo principai</h4>
+            <p>Grojaraščio perkėlimo funkcija atlieka tik metaduomenų (atlikėjo ir pavadinimo) nuskaitymą. Tai nėra dainų parsisiuntimas iš „Spotify“ ar „Apple Music“. Jeigu kūrinio nėra atvirame kataloge, naudotojui pateikiama nuoroda jį išklausyti oficialioje platformoje.</p>
+
+            <h4 class="text-sm font-bold text-white">3. Reklamos ir duomenų privatumas</h4>
+            <p>Platforma nerenka asmeninių naršymo duomenų pardavimui. Demonstraciniai baneriai yra skirti nemokamos prieigos palaikymui be invazinių sekimo slapukų.</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- MOBILIŲJŲ ĮRENGINIŲ APATINIS MENIU -->
+      <nav class="md:hidden h-16 bg-vibra-900 border-t border-vibra-800 flex items-center justify-around px-2 shrink-0 z-30">
+        <button onclick="navigateTo('home')" class="flex flex-col items-center gap-1 text-vibra-violet">
+          <i data-lucide="home" class="w-5 h-5"></i>
+          <span class="text-[10px]">Pradžia</span>
+        </button>
+        <button onclick="navigateTo('search')" class="flex flex-col items-center gap-1 text-gray-400">
+          <i data-lucide="search" class="w-5 h-5"></i>
+          <span class="text-[10px]">Paieška</span>
+        </button>
+        <button onclick="navigateTo('library')" class="flex flex-col items-center gap-1 text-gray-400">
+          <i data-lucide="library" class="w-5 h-5"></i>
+          <span class="text-[10px]">Biblioteka</span>
+        </button>
+        <button onclick="navigateTo('import')" class="flex flex-col items-center gap-1 text-gray-400">
+          <i data-lucide="folder-input" class="w-5 h-5"></i>
+          <span class="text-[10px]">Importas</span>
+        </button>
+      </nav>
+    </main>
+  </div>
+
+  <!-- 3. NUOLAT MATOMAS MUZIKOS GROTUVAS (BOTTOM PLAYER BAR) -->
+  <footer class="h-24 bg-vibra-900 border-t border-vibra-800 px-4 md:px-6 flex items-center justify-between z-40 relative backdrop-blur-md">
+    
+    <!-- Garso atkūrimo elementas (HTML5 audio) -->
+    <audio id="core-audio-element" preload="metadata"></audio>
+
+    <!-- Kairė: Dabartinės dainos informacija -->
+    <div class="flex items-center gap-3 w-1/4 min-w-[170px]">
+      <img id="player-thumb" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150" 
+           class="w-13 h-13 rounded-xl object-cover ring-1 ring-white/10 shadow-lg shrink-0">
+      <div class="overflow-hidden">
+        <h4 id="player-title" class="text-xs md:text-sm font-bold text-white truncate">Pasirinkite dainą</h4>
+        <p id="player-artist" class="text-[11px] text-gray-400 truncate mt-0.5">VIBRA Music</p>
+      </div>
+      <button onclick="toggleLikeCurrentTrack()" id="player-like-btn" class="text-gray-400 hover:text-red-400 transition ml-1 hidden sm:block">
+        <i data-lucide="heart" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- Centras: Pagrindiniai valdymo mygtukai ir laiko juosta -->
+    <div class="flex flex-col items-center gap-1.5 w-2/4 max-w-xl">
+      <div class="flex items-center gap-4 md:gap-6">
+        <button onclick="toggleShuffle()" id="btn-shuffle" class="text-gray-400 hover:text-white transition" title="Maišyti">
+          <i data-lucide="shuffle" class="w-4 h-4"></i>
+        </button>
+        <button onclick="playPrevTrack()" class="text-gray-400 hover:text-white transition" title="Ankstesnė">
+          <i data-lucide="skip-back" class="w-5 h-5"></i>
+        </button>
+        <button onclick="togglePlayPause()" id="btn-play-master" 
+                class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-white hover:scale-105 text-black flex items-center justify-center transition shadow-lg shadow-white/10">
+          <i id="icon-play-master" data-lucide="play" class="w-5 h-5 fill-black ml-0.5"></i>
+        </button>
+        <button onclick="playNextTrack()" class="text-gray-400 hover:text-white transition" title="Kita">
+          <i data-lucide="skip-forward" class="w-5 h-5"></i>
+        </button>
+        <button onclick="toggleRepeat()" id="btn-repeat" class="text-gray-400 hover:text-white transition" title="Kartoti">
+          <i data-lucide="repeat" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Laiko juosta (Scrubber) -->
+      <div class="w-full flex items-center gap-2.5 text-[10px] text-gray-400 font-mono">
+        <span id="player-time-current">0:00</span>
+        <input id="player-progress-bar" type="range" min="0" max="100" value="0" 
+               class="flex-1 h-1 bg-vibra-700 rounded-lg cursor-pointer">
+        <span id="player-time-total">0:00</span>
+      </div>
+    </div>
+
+    <!-- Dešinė: Garsumas ir foninio atkūrimo indikatorius -->
+    <div class="flex items-center justify-end gap-3 w-1/4">
+      <div class="hidden lg:flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md" 
+           title="Foninis atkūrimas veikia, kai naršyklė palaiko MediaSession ir įrenginio baterijos taupymas neriboja foninio garso">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Fone veikia
+      </div>
+      <button onclick="toggleMute()" class="text-gray-400 hover:text-white">
+        <i id="icon-volume" data-lucide="volume-2" class="w-4 h-4"></i>
+      </button>
+      <input id="player-volume-bar" type="range" min="0" max="100" value="80" 
+             class="w-16 md:w-24 h-1 bg-vibra-700 rounded-lg cursor-pointer hidden sm:block">
+    </div>
+  </footer>
+
+  <!-- 4. MODALINIS LANGAS: NAUJAS GROJARAŠTIS -->
+  <div id="modal-create-playlist" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-vibra-850 border border-vibra-700 w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+      <h3 class="text-base font-bold text-white mb-2">Naujas grojaraštis</h3>
+      <input id="input-new-pl-title" type="text" placeholder="Grojaraščio pavadinimas" 
+             class="w-full bg-vibra-800 border border-vibra-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-vibra-violet mb-4">
+      <div class="flex justify-end gap-2">
+        <button onclick="closeCreatePlaylistModal()" class="px-4 py-2 text-xs font-semibold bg-vibra-800 text-gray-300 rounded-xl">Atšaukti</button>
+        <button onclick="confirmCreatePlaylist()" class="px-4 py-2 text-xs font-bold bg-vibra-violet text-white rounded-xl">Sukurti</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT SISTEMOS VARIKLIS -->
+  <script>
+    // --- 1. FIREBASE KONFIGŪRACIJA ---
+    const firebaseConfig = {
+      apiKey: "JUSU_API_KEY",
+      authDomain: "jusu-projektas.firebaseapp.com",
+      projectId: "jusu-projektas",
+      storageBucket: "jusu-projektas.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:abcdef"
+    };
+
+    let isFirebaseActive = false;
+    let auth = null;
+    let db = null;
+
+    try {
+      if (firebaseConfig.apiKey !== "JUSU_API_KEY") {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
+        isFirebaseActive = true;
+      }
+    } catch(e) {
+      console.info("Veikiama vietiniame demonstraciniame režime be Firebase serverio.");
+    }
+
+    // --- 2. TEISĖTAS, NEMOKAMAS MUZIKOS KATALOGAS (Creative Commons / Royalty Free Audio) ---
+    // Šie garso failai yra 100% legalūs, atviri ir tiesiogiai transliuojami naršyklėje
+    const legalMusicCatalog = [
+      {
+        id: 'track_1',
+        title: 'Neon Skyline',
+        artist: 'Aura Synth',
+        album: 'Cyber Horizons',
+        genre: 'Synthwave',
+        duration: '2:15',
+        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=synthwave-80s-110045.mp3',
+        coverUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400'
+      },
+      {
+        id: 'track_2',
+        title: 'Midnight Lo-Fi Echo',
+        artist: 'Lofi Collective',
+        album: 'Coffee & Rain',
+        genre: 'Lo-Fi',
+        duration: '2:30',
+        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=lofi-study-112191.mp3',
+        coverUrl: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400'
+      },
+      {
+        id: 'track_3',
+        title: 'Urban Groove',
+        artist: 'BeatMaster',
+        album: 'Street Vibes',
+        genre: 'Hip-Hop',
+        duration: '2:05',
+        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939f77c30.mp3?filename=tomp3cc-hip-hop-rock-122808.mp3',
+        coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400'
+      },
+      {
+        id: 'track_4',
+        title: 'Electronic Pulse',
+        artist: 'Pulse Velocity',
+        album: 'Velocity Zero',
+        genre: 'Elektronika',
+        duration: '2:40',
+        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=electronic-future-beats-117997.mp3',
+        coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400'
+      },
+      {
+        id: 'track_5',
+        title: 'Morning Acoustic Breeze',
+        artist: 'Elena Wood',
+        album: 'Woodland Echoes',
+        genre: 'Akustinė',
+        duration: '2:12',
+        audioUrl: 'https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3?filename=acoustic-guitar-loop-f-91bpm-1218.mp3',
+        coverUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=400'
+      }
+    ];
+
+    // --- 3. BŪSENOS VALDYMAS (STATE) ---
+    let currentUser = null;
+    let userPlaylists = [
+      { id: 'pl_favorites', name: 'Pamėgtos dainos', description: 'Tavo išsaugotos dainos', tracks: [legalMusicCatalog[0], legalMusicCatalog[1]] }
+    ];
+    let userLikedTrackIds = ['track_1', 'track_2'];
+    let playbackHistory = [];
+
+    // Grotuvo būsena
+    let currentQueue = [...legalMusicCatalog];
+    let currentTrackIndex = 0;
+    let isPlaying = false;
+    let isShuffle = false;
+    let isRepeat = false;
+
+    // Laikinas importuotų dainų buferis
+    let tempImportedTracks = [];
+
+    const audioEl = document.getElementById('core-audio-element');
+
+    // --- 4. INICIALIZACIJA ---
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initAudioEngine();
+      renderHome();
+      renderSidebarPlaylists();
+      renderGenres();
+      setupAuthListener();
+      updateAuthUI();
+    });
+
+    // --- 5. AUDIO VARIKLIS IR MEDIASESSION API (FONINIS ATKŪRIMAS) ---
+    function initAudioEngine() {
+      // Atkūrimo eiga
+      audioEl.addEventListener('timeupdate', () => {
+        if (!audioEl.duration) return;
+        const current = audioEl.currentTime;
+        const total = audioEl.duration;
+        document.getElementById('player-time-current').innerText = formatTime(current);
+        document.getElementById('player-time-total').innerText = formatTime(total);
+        document.getElementById('player-progress-bar').value = (current / total) * 100;
+
+        // Išsaugome dabartinę grojimo vietą sesijoje
+        sessionStorage.setItem('vibra_last_position', current);
+      });
+
+      // Baigus dainą
+      audioEl.addEventListener('ended', () => {
+        if (isRepeat) {
+          audioEl.currentTime = 0;
+          audioEl.play();
+        } else {
+          playNextTrack();
+        }
+      });
+
+      // Klaidos apdorojimas
+      audioEl.addEventListener('error', (e) => {
+        console.warn("Garso atkūrimo klaida arba srautas laikinai nepasiekiamas:", e);
+      });
+
+      // Laiko juostos valdymas (Scrubbing)
+      document.getElementById('player-progress-bar').addEventListener('input', (e) => {
+        if (audioEl.duration) {
+          audioEl.currentTime = (e.target.value / 100) * audioEl.duration;
+        }
+      });
+
+      // Garsumo reguliavimas
+      document.getElementById('player-volume-bar').addEventListener('input', (e) => {
+        audioEl.volume = e.target.value / 100;
+        updateVolumeIcon(audioEl.volume);
+      });
+
+      // Prijungiame W3C MediaSession API foniniam atkūrimui ir užrakinto ekrano valdymui
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', () => togglePlayPause());
+        navigator.mediaSession.setActionHandler('pause', () => togglePlayPause());
+        navigator.mediaSession.setActionHandler('previoustrack', () => playPrevTrack());
+        navigator.mediaSession.setActionHandler('nexttrack', () => playNextTrack());
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (details.seekTime && audioEl.duration) {
+            audioEl.currentTime = details.seekTime;
+          }
+        });
+      }
+    }
+
+    function loadTrack(trackIndex, autoPlay = true) {
+      if (!currentQueue[trackIndex]) return;
+      currentTrackIndex = trackIndex;
+      const track = currentQueue[trackIndex];
+
+      audioEl.src = track.audioUrl;
+      
+      // UI atnaujinimas
+      document.getElementById('player-title').innerText = track.title;
+      document.getElementById('player-artist').innerText = track.artist;
+      document.getElementById('player-thumb').src = track.coverUrl;
+      updateLikeButtonUI(track.id);
+
+      // MediaSession metaduomenų nustatymas
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.title,
+          artist: track.artist,
+          album: track.album || 'VIBRA Music',
+          artwork: [
+            { src: track.coverUrl, sizes: '512x512', type: 'image/jpeg' }
+          ]
+        });
+      }
+
+      // Pridėti į istoriją
+      if (!playbackHistory.some(t => t.id === track.id)) {
+        playbackHistory.unshift(track);
+      }
+
+      if (autoPlay) {
+        audioEl.play().then(() => {
+          isPlaying = true;
+          updatePlayMasterIcon();
+        }).catch(err => {
+          console.log("Autoplay apribotas naršyklės, reikalingas naudotojo paspaudimas:", err);
+          isPlaying = false;
+          updatePlayMasterIcon();
+        });
+      }
+    }
+
+    function togglePlayPause() {
+      if (!audioEl.src) {
+        loadTrack(0, true);
+        return;
+      }
+      if (audioEl.paused) {
+        audioEl.play().then(() => {
+          isPlaying = true;
+          updatePlayMasterIcon();
+        });
+      } else {
+        audioEl.pause();
+        isPlaying = false;
+        updatePlayMasterIcon();
+      }
+    }
+
+    function playNextTrack() {
+      if (isShuffle) {
+        currentTrackIndex = Math.floor(Math.random() * currentQueue.length);
+      } else {
+        currentTrackIndex = (currentTrackIndex + 1) % currentQueue.length;
+      }
+      loadTrack(currentTrackIndex, true);
+    }
+
+    function playPrevTrack() {
+      if (audioEl.currentTime > 3) {
+        audioEl.currentTime = 0;
+      } else {
+        currentTrackIndex = (currentTrackIndex - 1 + currentQueue.length) % currentQueue.length;
+        loadTrack(currentTrackIndex, true);
+      }
+    }
+
+    function toggleShuffle() {
+      isShuffle = !isShuffle;
+      document.getElementById('btn-shuffle').classList.toggle('text-vibra-violet', isShuffle);
+      document.getElementById('btn-shuffle').classList.toggle('text-gray-400', !isShuffle);
+    }
+
+    function toggleRepeat() {
+      isRepeat = !isRepeat;
+      document.getElementById('btn-repeat').classList.toggle('text-vibra-violet', isRepeat);
+      document.getElementById('btn-repeat').classList.toggle('text-gray-400', !isRepeat);
+    }
+
+    function updatePlayMasterIcon() {
+      const icon = document.getElementById('icon-play-master');
+      if (isPlaying) {
+        icon.setAttribute('data-lucide', 'pause');
+      } else {
+        icon.setAttribute('data-lucide', 'play');
+      }
+      lucide.createIcons();
+    }
+
+    function updateVolumeIcon(vol) {
+      const icon = document.getElementById('icon-volume');
+      if (vol === 0) icon.setAttribute('data-lucide', 'volume-x');
+      else if (vol < 0.5) icon.setAttribute('data-lucide', 'volume-1');
+      else icon.setAttribute('data-lucide', 'volume-2');
+      lucide.createIcons();
+    }
+
+    function toggleMute() {
+      audioEl.muted = !audioEl.muted;
+      updateVolumeIcon(audioEl.muted ? 0 : audioEl.volume);
+    }
+
+    function formatTime(sec) {
+      if (isNaN(sec)) return "0:00";
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    // --- 6. PUSLAPIŲ NAVIGACIJA (SPA ROUTER) ---
+    function navigateTo(pageId, extraParam = null) {
+      document.querySelectorAll('.page-view').forEach(el => el.classList.add('hidden'));
+      const target = document.getElementById(`view-${pageId}`);
+      if (target) {
+        target.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // Meniu paryškinimai
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.classList.remove('bg-vibra-800', 'text-white');
+        btn.classList.add('text-gray-400');
+      });
+      const activeNav = document.getElementById(`nav-btn-${pageId}`);
+      if (activeNav) {
+        activeNav.classList.add('bg-vibra-800', 'text-white');
+        activeNav.classList.remove('text-gray-400');
+      }
+
+      if (pageId === 'library') renderLibrary();
+      if (pageId === 'playlist' && extraParam) openPlaylistView(extraParam);
+      if (pageId === 'artist' && extraParam) openArtistView(extraParam);
+      if (pageId === 'album' && extraParam) openAlbumView(extraParam);
+    }
+
+    // --- 7. VAIZDO ATVAIZDAVIMAS (RENDERING) ---
+    function renderHome() {
+      const grid = document.getElementById('home-featured-grid');
+      grid.innerHTML = '';
+
+      legalMusicCatalog.forEach((track, idx) => {
+        const card = document.createElement('div');
+        card.className = "bg-vibra-850/60 p-3.5 rounded-2xl border border-vibra-800 hover:border-vibra-700 hover:bg-vibra-800/60 transition group cursor-pointer";
+        card.innerHTML = `
+          <div class="relative rounded-xl overflow-hidden mb-3 aspect-square">
+            <img src="${track.coverUrl}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+            <button onclick="event.stopPropagation(); playSpecificCatalogTrack(${idx})" class="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-vibra-violet text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg hover:scale-105">
+              <i data-lucide="play" class="w-4 h-4 fill-white ml-0.5"></i>
+            </button>
+          </div>
+          <h4 class="text-xs font-bold text-white truncate">${track.title}</h4>
+          <p class="text-[11px] text-gray-400 truncate mt-0.5" onclick="event.stopPropagation(); navigateTo('artist', '${track.artist}')">${track.artist}</p>
+        `;
+        card.onclick = () => playSpecificCatalogTrack(idx);
+        grid.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    function renderGenres() {
+      const container = document.getElementById('genre-cards-container');
+      container.innerHTML = '';
+      const genres = [
+        { name: 'Synthwave', color: 'from-pink-600 to-purple-800' },
+        { name: 'Lo-Fi', color: 'from-indigo-600 to-blue-800' },
+        { name: 'Hip-Hop', color: 'from-amber-600 to-red-800' },
+        { name: 'Elektronika', color: 'from-cyan-600 to-teal-800' },
+        { name: 'Akustinė', color: 'from-emerald-600 to-green-800' }
+      ];
+
+      genres.forEach(g => {
+        const div = document.createElement('div');
+        div.className = `p-6 rounded-2xl bg-gradient-to-tr ${g.color} text-white font-black text-lg cursor-pointer hover:scale-[1.02] transition shadow-lg`;
+        div.innerText = g.name;
+        div.onclick = () => {
+          document.getElementById('global-search-input').value = g.name;
+          handleSearch(g.name);
+          navigateTo('search');
+        };
+        container.appendChild(div);
+      });
+    }
+
+    function renderSidebarPlaylists() {
+      const list = document.getElementById('sidebar-playlists-list');
+      list.innerHTML = '';
+      userPlaylists.forEach(pl => {
+        const item = document.createElement('button');
+        item.className = "w-full text-left px-3 py-1.5 rounded-lg text-gray-400 hover:text-white truncate transition";
+        item.innerText = pl.name;
+        item.onclick = () => navigateTo('playlist', pl.id);
+        list.appendChild(item);
+      });
+    }
+
+    function renderLibrary() {
+      document.getElementById('liked-count-badge').innerText = userLikedTrackIds.length;
+      const likedContainer = document.getElementById('liked-tracks-list');
+      likedContainer.innerHTML = '';
+
+      const likedTracks = legalMusicCatalog.filter(t => userLikedTrackIds.includes(t.id));
+      if (likedTracks.length === 0) {
+        likedContainer.innerHTML = `<p class="text-xs text-gray-500 py-3">Pamėgtų dainų kol kas nėra.</p>`;
+      } else {
+        likedTracks.forEach(track => {
+          likedContainer.appendChild(createTrackRowElement(track));
+        });
+      }
+
+      const historyContainer = document.getElementById('history-tracks-list');
+      historyContainer.innerHTML = '';
+      playbackHistory.slice(0, 5).forEach(track => {
+        historyContainer.appendChild(createTrackRowElement(track));
+      });
+      lucide.createIcons();
+    }
+
+    function createTrackRowElement(track) {
+      const row = document.createElement('div');
+      row.className = "flex items-center justify-between p-2.5 rounded-xl hover:bg-vibra-800/50 transition cursor-pointer group";
+      row.innerHTML = `
+        <div class="flex items-center gap-3 min-w-0">
+          <img src="${track.coverUrl}" class="w-10 h-10 rounded-lg object-cover">
+          <div class="truncate">
+            <span class="text-xs font-semibold text-white block truncate">${track.title}</span>
+            <span class="text-[11px] text-gray-400 truncate">${track.artist}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-mono text-gray-500">${track.duration}</span>
+          <button onclick="event.stopPropagation(); playSingleTrackDirectly('${track.id}')" class="p-2 rounded-full hover:bg-vibra-700 text-vibra-violet">
+            <i data-lucide="play" class="w-4 h-4 fill-vibra-violet"></i>
+          </button>
+        </div>
+      `;
+      row.onclick = () => playSingleTrackDirectly(track.id);
+      return row;
+    }
+
+    // --- 8. GROJARAŠČIŲ PERKĖLIMAS IŠ KITŲ PLATFORMŲ (IMPORT ENGINE) ---
+    let currentImportPlatform = 'Spotify';
+
+    function openImportDrawer(platform) {
+      currentImportPlatform = platform;
+      document.getElementById('import-box-platform').innerText = `Importas iš: ${platform}`;
+      document.getElementById('import-active-box').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function handleCSVUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      document.getElementById('csv-filename').innerText = file.name;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        document.getElementById('import-raw-data').value = evt.target.result;
+      };
+      reader.readAsText(file);
+    }
+
+    function executePlaylistImport() {
+      const rawText = document.getElementById('import-raw-data').value.trim();
+      const customName = document.getElementById('import-new-name').value.trim() || `Importuotas iš ${currentImportPlatform}`;
+
+      if (!rawText) {
+        alert("Prašome įvesti dainų sąrašą arba nuorodą.");
+        return;
+      }
+
+      // Išskaidome eilutėmis
+      const lines = rawText.split('\n');
+      tempImportedTracks = [];
+
+      let matchedCount = 0;
+      let externalCount = 0;
+
+      lines.forEach(line => {
+        const clean = line.replace(/^\d+[\.\)]\s*/, '').trim();
+        if (clean.length > 2) {
+          // Ieškome sutapimo atvirame legaliame kataloge
+          const cleanLower = clean.toLowerCase();
+          const matchInCatalog = legalMusicCatalog.find(t => 
+            cleanLower.includes(t.title.toLowerCase()) || 
+            cleanLower.includes(t.artist.toLowerCase())
+          );
+
+          if (matchInCatalog) {
+            tempImportedTracks.push({
+              title: matchInCatalog.title,
+              artist: matchInCatalog.artist,
+              status: 'FOUND',
+              trackRef: matchInCatalog
+            });
+            matchedCount++;
+          } else {
+            // Kūrinio nėra atvirame kataloge
+            let parts = clean.split('-');
+            let artist = parts[0] ? parts[0].trim() : 'Nežinomas';
+            let title = parts[1] ? parts[1].trim() : clean;
+
+            tempImportedTracks.push({
+              title: title,
+              artist: artist,
+              status: 'EXTERNAL',
+              originalQuery: clean
+            });
+            externalCount++;
+          }
+        }
+      });
+
+      // Ataskaitos atvaizdavimas
+      const reportBox = document.getElementById('import-report-container');
+      const listEl = document.getElementById('import-matched-list');
+      reportBox.classList.remove('hidden');
+      listEl.innerHTML = '';
+
+      document.getElementById('import-stat-text').innerText = 
+        `Nuskaityta: ${tempImportedTracks.length} kūriniai. Rasta kataloge: ${matchedCount}, Galima kitoje platformoje: ${externalCount}.`;
+
+      tempImportedTracks.forEach(item => {
+        const row = document.createElement('div');
+        row.className = "grid grid-cols-12 items-center py-2.5 px-3 text-xs";
+        
+        let statusBadge = item.status === 'FOUND' 
+          ? `<span class="col-span-3 text-emerald-400 font-semibold flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5"></i> Rasta</span>`
+          : `<span class="col-span-3 text-amber-400 font-semibold flex items-center gap-1"><i data-lucide="external-link" class="w-3.5 h-3.5"></i> Kitoje platformoje</span>`;
+
+        let actionBtn = item.status === 'FOUND'
+          ? `<span class="col-span-3 text-right text-gray-400">Įtraukta į grojaraštį</span>`
+          : `<a href="https://www.youtube.com/results?search_query=${encodeURIComponent(item.artist + ' ' + item.title)}" target="_blank" class="col-span-3 text-right text-vibra-cyan hover:underline">Klausytis šaltinyje</a>`;
+
+        row.innerHTML = `
+          <div class="col-span-6 truncate font-medium text-white">${item.title} <span class="text-gray-400 text-[11px] block">${item.artist}</span></div>
+          ${statusBadge}
+          ${actionBtn}
+        `;
+        listEl.appendChild(row);
+      });
+
+      lucide.createIcons();
+    }
+
+    function saveImportedPlaylistToLibrary() {
+      const name = document.getElementById('import-new-name').value.trim() || `Mano ${currentImportPlatform} grojaraštis`;
+      const validTracks = tempImportedTracks
+        .filter(i => i.status === 'FOUND' && i.trackRef)
+        .map(i => i.trackRef);
+
+      const newPl = {
+        id: 'pl_' + Date.now(),
+        name: name,
+        description: `Importuota iš ${currentImportPlatform}. (${validTracks.length} atvirų dainų)`,
+        tracks: validTracks
+      };
+
+      userPlaylists.push(newPl);
+      renderSidebarPlaylists();
+      alert(`Grojaraštis „${name}“ sėkmingai išsaugotas bibliotekoje!`);
+      navigateTo('playlist', newPl.id);
+    }
+
+    // --- 9. GROJARAŠČIŲ VALDYMAS ---
+    function promptCreatePlaylist() {
+      document.getElementById('modal-create-playlist').classList.remove('hidden');
+    }
+
+    function closeCreatePlaylistModal() {
+      document.getElementById('modal-create-playlist').classList.add('hidden');
+    }
+
+    function confirmCreatePlaylist() {
+      const name = document.getElementById('input-new-pl-title').value.trim();
+      if (!name) return;
+
+      const newPl = {
+        id: 'pl_' + Date.now(),
+        name: name,
+        description: 'Vartotojo sukurtas grojaraštis',
+        tracks: []
+      };
+
+      userPlaylists.push(newPl);
+      renderSidebarPlaylists();
+      closeCreatePlaylistModal();
+      document.getElementById('input-new-pl-title').value = '';
+      navigateTo('playlist', newPl.id);
+    }
+
+    function openPlaylistView(plId) {
+      const pl = userPlaylists.find(p => p.id === plId);
+      if (!pl) return;
+
+      document.getElementById('pl-detail-title').innerText = pl.name;
+      document.getElementById('pl-detail-desc').innerText = pl.description || `${pl.tracks.length} dainos`;
+
+      const listContainer = document.getElementById('pl-tracks-list');
+      listContainer.innerHTML = '';
+
+      if (pl.tracks.length === 0) {
+        listContainer.innerHTML = `<p class="text-xs text-gray-500 py-6">Šiame grojaraštyje dainų dar nėra. Pridėkite dainų iš katalogo arba importo.</p>`;
+      } else {
+        pl.tracks.forEach((track, i) => {
+          const row = createTrackRowElement(track);
+          listContainer.appendChild(row);
+        });
+      }
+
+      document.getElementById('pl-play-all-btn').onclick = () => {
+        if (pl.tracks.length > 0) {
+          currentQueue = [...pl.tracks];
+          loadTrack(0, true);
+        }
+      };
+      lucide.createIcons();
+    }
+
+    function shareCurrentPlaylist() {
+      const dummyUrl = window.location.href.split('#')[0] + "#share";
+      navigator.clipboard.writeText(dummyUrl).then(() => {
+        alert("Grojaraščio nuoroda nukopijuota į iškarpinę!");
+      }).catch(() => {
+        alert("Dalijimosi nuoroda: " + dummyUrl);
+      });
+    }
+
+    function deleteCurrentPlaylist() {
+      const currentTitle = document.getElementById('pl-detail-title').innerText;
+      if (confirm(`Ar tikrai norite pašalinti grojaraštį „${currentTitle}“?`)) {
+        userPlaylists = userPlaylists.filter(p => p.name !== currentTitle);
+        renderSidebarPlaylists();
+        navigateTo('home');
+      }
+    }
+
+    // --- 10. ATKŪRIMO PAGALBINIAI VEIKSMAI ---
+    function playAllCatalog() {
+      currentQueue = [...legalMusicCatalog];
+      loadTrack(0, true);
+    }
+
+    function playSpecificCatalogTrack(index) {
+      currentQueue = [...legalMusicCatalog];
+      loadTrack(index, true);
+    }
+
+    function playSingleTrackDirectly(trackId) {
+      const track = legalMusicCatalog.find(t => t.id === trackId);
+      if (track) {
+        currentQueue = [track];
+        loadTrack(0, true);
+      }
+    }
+
+    function toggleLikeCurrentTrack() {
+      const track = currentQueue[currentTrackIndex];
+      if (!track) return;
+
+      const idx = userLikedTrackIds.indexOf(track.id);
+      if (idx > -1) {
+        userLikedTrackIds.splice(idx, 1);
+      } else {
+        userLikedTrackIds.push(track.id);
+      }
+      updateLikeButtonUI(track.id);
+    }
+
+    function updateLikeButtonUI(trackId) {
+      const btn = document.getElementById('player-like-btn');
+      const isLiked = userLikedTrackIds.includes(trackId);
+      btn.classList.toggle('text-red-400', isLiked);
+      btn.classList.toggle('text-gray-400', !isLiked);
+    }
+
+    // --- 11. PAIEŠKOS LOGIKA ---
+    function handleSearch(query) {
+      const term = query.toLowerCase().trim();
+      const resultsContainer = document.getElementById('search-results-list');
+      resultsContainer.innerHTML = '';
+
+      if (!term) return;
+
+      const matches = legalMusicCatalog.filter(t => 
+        t.title.toLowerCase().includes(term) || 
+        t.artist.toLowerCase().includes(term) ||
+        t.genre.toLowerCase().includes(term)
+      );
+
+      if (matches.length === 0) {
+        resultsContainer.innerHTML = `<p class="text-xs text-gray-500 py-4">Pagal užklausą nieko nerasta atvirame kataloge.</p>`;
+      } else {
+        matches.forEach(m => {
+          resultsContainer.appendChild(createTrackRowElement(m));
+        });
+      }
+      lucide.createIcons();
+    }
+
+    document.getElementById('global-search-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const val = e.target.value;
+        document.getElementById('search-page-input').value = val;
+        handleSearch(val);
+        navigateTo('search');
+      }
+    });
+
+    document.getElementById('search-page-input').addEventListener('input', (e) => {
+      handleSearch(e.target.value);
+    });
+
+    // --- 12. AUTENTIFIKACIJA IR VARTOTOJO PASKYRA ---
+    function setupAuthListener() {
+      if (isFirebaseActive && auth) {
+        auth.onAuthStateChanged(user => {
+          if (user) {
+            currentUser = {
+              displayName: user.displayName || 'Muzikos entuziastas',
+              email: user.email,
+              photoURL: user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+            };
+          } else {
+            currentUser = null;
+          }
+          updateAuthUI();
+        });
+      }
+    }
+
+    function updateAuthUI() {
+      const container = document.getElementById('auth-header-container');
+      if (currentUser) {
+        container.innerHTML = `
+          <div onclick="navigateTo('profile')" class="flex items-center gap-2 cursor-pointer bg-vibra-800/80 hover:bg-vibra-800 p-1.5 pr-3 rounded-full border border-vibra-700/60 transition">
+            <img src="${currentUser.photoURL}" class="w-7 h-7 rounded-full object-cover">
+            <span class="text-xs font-semibold text-white">${currentUser.displayName}</span>
+          </div>
+        `;
+        document.getElementById('profile-img').src = currentUser.photoURL;
+        document.getElementById('profile-display-name').innerText = currentUser.displayName;
+        document.getElementById('profile-display-email').innerText = currentUser.email;
+      } else {
+        container.innerHTML = `
+          <button onclick="navigateTo('auth')" class="px-4 py-2 bg-white hover:bg-gray-100 text-gray-900 rounded-full font-bold text-xs transition">
+            Prisijungti
+          </button>
+        `;
+      }
+    }
+
+    function setAuthMode(mode) {
+      const isReg = mode === 'register';
+      document.getElementById('field-name-container').classList.toggle('hidden', !isReg);
+      document.getElementById('btn-auth-mode-login').className = isReg ? 'flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400' : 'flex-1 py-2 text-xs font-semibold rounded-lg bg-vibra-700 text-white';
+      document.getElementById('btn-auth-mode-register').className = isReg ? 'flex-1 py-2 text-xs font-semibold rounded-lg bg-vibra-700 text-white' : 'flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400';
+    }
+
+    function handleAuthSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('auth-input-email').value;
+      const name = document.getElementById('auth-input-name').value || 'Vartotojas';
+
+      handleDemoLogin(name, email);
+    }
+
+    function handleDemoLogin(name = 'Demo Klausytojas', email = 'klausytojas@vibra.local') {
+      currentUser = {
+        displayName: name,
+        email: email,
+        photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
+      };
+      updateAuthUI();
+      navigateTo('home');
+    }
+
+    function handleGoogleSignIn() {
+      if (!isFirebaseActive) {
+        alert("Firebase API raktai dar neįrašyti faile. Įjungiamas greitasis demonstracinis prisijungimas.");
+        handleDemoLogin('Google Vartotojas', 'google.user@vibra.local');
+        return;
+      }
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider);
+    }
+
+    function handleLogout() {
+      if (isFirebaseActive && auth) auth.signOut();
+      currentUser = null;
+      updateAuthUI();
+      navigateTo('home');
+    }
+
+    function openArtistView(artistName) {
+      document.getElementById('artist-view-name').innerText = artistName;
+      document.getElementById('artist-view-bio').innerText = `${artistName} – atvirosios muzikos licencijų atlikėjas VIBRA platformoje.`;
+      document.getElementById('artist-view-img').src = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400';
+
+      const tracks = legalMusicCatalog.filter(t => t.artist === artistName);
+      const container = document.getElementById('artist-tracks-container');
+      container.innerHTML = '';
+      tracks.forEach(t => container.appendChild(createTrackRowElement(t)));
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
